@@ -379,77 +379,117 @@
     const [y, m] = d.split("-").map(Number);
     return (y - 2022) * 12 + ((m || 3) - 1) - 8;
   }
-  function textW(s) { let w = 0; for (const ch of s) w += /[　-鿿＀-￯]/.test(ch) ? 12.5 : 6.9; return Math.ceil(w); }
+  function textW(s) { let w = 0; for (const ch of s) w += /[　-鿿＀-￯]/.test(ch) ? 13 : 7.2; return Math.ceil(w); }
 
+  let lastW = 0, highlightFn = () => {};
   function buildGraph() {
     const svg = document.getElementById("lineageSvg");
-    const PX = 25, X0 = 170, ROW = 30, TOP = 40, PADL = 14;
+    const scroll = document.getElementById("lgScroll");
+    const labels = document.getElementById("lgLabels");
+    const avail = Math.max(320, scroll.clientWidth);
+    lastW = scroll.clientWidth;
+    const ROW = 32, TOP = 38, PADL = 14, XL = 18, XR = 40;
     const maxM = monthIndex("2026-11");
-    const W = X0 + maxM * PX + 150;
+    // 按论文密度伸缩的时间轴：每个月的宽度 = 基础宽度 + 该月论文数 × 额外宽度
+    const cnt = new Array(maxM + 1).fill(0);
+    PAPERS.forEach(p => { const m = monthIndex(p.d); if (m >= 0 && m <= maxM) cnt[m]++; });
+    const weight = cnt.map(c => 1 + 3.2 * c);
+    const totalW = weight.reduce((s, w) => s + w, 0);
+    const minPlot = 1150;
+    const plot = Math.max(avail - XL - XR - 120, minPlot);
+    const unit = plot / totalW;
+    const xAt = []; let acc = 0;
+    for (let m = 0; m <= maxM; m++) { xAt[m] = XL + acc * unit; acc += weight[m]; }
+    const xOf = m => xAt[Math.max(0, Math.min(maxM, m))] + weight[Math.max(0, Math.min(maxM, m))] * unit * 0.15;
+    const W = XL + plot + XR + 120;
+
+    graph.nodes = {};
     let y = TOP;
     const laneY = [];
     LANES.forEach(([lid, lname], li) => {
       const ps = PAPERS.filter(p => p.b === lid).map(p => {
         const label = SHORT[p.k] || p.n;
-        return { p, label, x: X0 + monthIndex(p.d) * PX, w: textW(label) + 20 };
+        return { p, label, x: xOf(monthIndex(p.d)), w: textW(label) + 22 };
       }).sort((a, b) => a.x - b.x);
       const rows = [];
       ps.forEach(n => {
-        let r = rows.findIndex(right => right + 8 <= n.x);
-        if (r < 0) { rows.push(0); r = rows.length - 1; }
+        let r = rows.findIndex(right => right + 10 <= n.x);
+        if (r < 0) { rows.push(-1e9); r = rows.length - 1; }
         rows[r] = n.x + n.w;
         n.y = y + PADL + r * ROW;
         graph.nodes[n.p.k] = n;
       });
       const h = PADL * 2 + Math.max(1, rows.length) * ROW - 8;
       laneY.push([lid, lname, y, h, li]);
-      y += h + 6;
+      y += h;
     });
-    const H = y + 6;
+    const H = y + 8;
     svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
     svg.setAttribute("width", W); svg.setAttribute("height", H);
     svg.innerHTML = "";
-    const defs = svgEl("defs", {});
-    const mk = svgEl("marker", { id: "lgArrow", viewBox: "0 0 8 8", refX: "7", refY: "4", markerWidth: "7", markerHeight: "7", orient: "auto-start-reverse" });
-    mk.appendChild(svgEl("path", { d: "M0,0 L8,4 L0,8 z", class: "lg-arrow" }));
-    const mk2 = svgEl("marker", { id: "lgArrowHl", viewBox: "0 0 8 8", refX: "7", refY: "4", markerWidth: "7", markerHeight: "7", orient: "auto-start-reverse" });
-    mk2.appendChild(svgEl("path", { d: "M0,0 L8,4 L0,8 z", class: "lg-arrow-hl" }));
-    defs.appendChild(mk); defs.appendChild(mk2); svg.appendChild(defs);
 
-    // lanes
+    // 固定的泳道名称列
+    labels.innerHTML = "";
+    labels.style.height = H + "px";
+    const head = el("div", "lg-label"); head.style.top = "0px"; head.style.height = TOP + "px"; head.textContent = "分支 ╲ 时间";
+    labels.appendChild(head);
+    laneY.forEach(([lid, lname, ly, lh, li]) => {
+      const d = el("div", "lg-label" + (li % 2 ? " odd" : ""), lname);
+      d.style.top = ly + "px"; d.style.height = lh + "px";
+      labels.appendChild(d);
+    });
+
+    const defs = svgEl("defs", {});
+    [["lgArrow", "lg-arrow"], ["lgArrowHl", "lg-arrow-hl"]].forEach(([id, cls]) => {
+      const mk = svgEl("marker", { id, viewBox: "0 0 8 8", refX: "7", refY: "4", markerWidth: "7", markerHeight: "7", orient: "auto-start-reverse" });
+      mk.appendChild(svgEl("path", { d: "M0,0 L8,4 L0,8 z", class: cls }));
+      defs.appendChild(mk);
+    });
+    svg.appendChild(defs);
+
     laneY.forEach(([lid, lname, ly, lh, li]) => {
       svg.appendChild(svgEl("rect", { x: 0, y: ly, width: W, height: lh, class: li % 2 ? "lg-lane odd" : "lg-lane" }));
-      const t = svgEl("text", { x: 12, y: ly + lh / 2 + 4, class: "lg-lane-label" }); t.textContent = lname; svg.appendChild(t);
     });
-    // years
+    // 年份与季度刻度
+    let lastQx = -1e9;
     for (let yr = 2023; yr <= 2026; yr++) {
-      const x = X0 + monthIndex(`${yr}-01`) * PX;
-      svg.appendChild(svgEl("line", { x1: x, y1: TOP - 10, x2: x, y2: H - 4, class: "lg-year-line" }));
-      const t = svgEl("text", { x: x + 4, y: TOP - 16, class: "lg-year" }); t.textContent = String(yr); svg.appendChild(t);
+      for (let q = 0; q < 4; q++) {
+        const m = monthIndex(`${yr}-${String(q * 3 + 1).padStart(2, "0")}`);
+        if (m < 0 || m > maxM) continue;
+        const x = xAt[m];
+        const roomy = x - lastQx >= 36;
+        if (!q || roomy) {
+          svg.appendChild(svgEl("line", { x1: x, y1: TOP - (q ? 6 : 12), x2: x, y2: H - 4, class: q ? "lg-q-line" : "lg-year-line" }));
+          if (q && roomy) {
+            const tt = svgEl("text", { x: x + 4, y: TOP - 6, class: "lg-q" }); tt.textContent = `Q${q + 1}`; svg.appendChild(tt);
+          }
+          if (!q) {
+            const tt = svgEl("text", { x: x + 4, y: TOP - 20, class: "lg-year" }); tt.textContent = String(yr); svg.appendChild(tt);
+          }
+          lastQx = x;
+        }
+      }
     }
-    const t22 = svgEl("text", { x: X0 + 4, y: TOP - 16, class: "lg-year" }); t22.textContent = "2022.09"; svg.appendChild(t22);
 
-    // edges
     const eg = svgEl("g", { class: "lg-edges" });
     graph.edges = [];
     EDGES.forEach(([a, b]) => {
       const A = graph.nodes[a], B = graph.nodes[b]; if (!A || !B) return;
-      const x1 = A.x + A.w, y1 = A.y + 11, x2 = B.x, y2 = B.y + 11;
-      const dx = Math.max(30, Math.abs(x2 - x1) * 0.45);
+      const x1 = A.x + A.w, y1 = A.y + 12, x2 = B.x, y2 = B.y + 12;
+      const dx = Math.max(36, Math.abs(x2 - x1) * 0.45);
       const path = svgEl("path", { d: `M${x1},${y1} C${x1 + dx},${y1} ${x2 - dx},${y2} ${x2 - 2},${y2}`, class: "lg-edge", "marker-end": "url(#lgArrow)" });
       path.dataset.a = a; path.dataset.b = b;
       eg.appendChild(path); graph.edges.push(path);
     });
     svg.appendChild(eg);
 
-    // nodes
     const ng = svgEl("g", { class: "lg-nodes" });
     Object.values(graph.nodes).forEach(n => {
       const g = svgEl("g", { class: "lg-node", tabindex: "0", role: "button", "aria-label": `${n.p.n}，打开解读` });
       g.dataset.k = n.p.k;
-      g.appendChild(svgEl("rect", { x: n.x, y: n.y, width: n.w, height: 22, rx: 5 }));
-      const t = svgEl("text", { x: n.x + 10, y: n.y + 15 }); t.textContent = n.label; g.appendChild(t);
-      const title = svgEl("title", {}); title.textContent = `${n.p.n} · ${n.p.d}`; g.appendChild(title);
+      g.appendChild(svgEl("rect", { x: n.x, y: n.y, width: n.w, height: 24, rx: 6 }));
+      const tx = svgEl("text", { x: n.x + 11, y: n.y + 16 }); tx.textContent = n.label; g.appendChild(tx);
+      const title = svgEl("title", {}); title.textContent = `${n.p.n} · ${n.p.d} · ${n.p.v}`; g.appendChild(title);
       n.g = g; ng.appendChild(g);
     });
     svg.appendChild(ng);
@@ -465,7 +505,7 @@
       }
       return out;
     };
-    const highlight = k => {
+    highlightFn = k => {
       if (!k) { svg.classList.remove("focus"); svg.querySelectorAll(".hl").forEach(e => e.classList.remove("hl", "self")); graph.edges.forEach(e => e.setAttribute("marker-end", "url(#lgArrow)")); return; }
       const up = reach(k, "up"), down = reach(k, "down");
       const set = new Set([...up, ...down]);
@@ -476,19 +516,83 @@
         e.classList.toggle("hl", on); e.setAttribute("marker-end", on ? "url(#lgArrowHl)" : "url(#lgArrow)");
       });
     };
-    ng.addEventListener("mouseover", e => { const g = e.target.closest(".lg-node"); if (g) highlight(g.dataset.k); });
-    ng.addEventListener("mouseleave", () => highlight(null));
-    ng.addEventListener("focusin", e => { const g = e.target.closest(".lg-node"); if (g) highlight(g.dataset.k); });
-    ng.addEventListener("focusout", () => highlight(null));
-    ng.addEventListener("click", e => { const g = e.target.closest(".lg-node"); if (g) openPaper(g.dataset.k); });
-    ng.addEventListener("keydown", e => {
+    renderGraphStatus();
+  }
+
+  function wireGraph() {
+    const svg = document.getElementById("lineageSvg");
+    const scroll = document.getElementById("lgScroll");
+    svg.addEventListener("mouseover", e => { const g = e.target.closest(".lg-node"); if (g && !drag.moved) highlightFn(g.dataset.k); });
+    svg.addEventListener("mouseleave", () => highlightFn(null));
+    svg.addEventListener("focusin", e => { const g = e.target.closest(".lg-node"); if (g) highlightFn(g.dataset.k); });
+    svg.addEventListener("focusout", () => highlightFn(null));
+    svg.addEventListener("click", e => {
+      if (drag.moved) return;
+      const g = e.target.closest(".lg-node"); if (g) openPaper(g.dataset.k);
+    });
+    svg.addEventListener("keydown", e => {
       const g = e.target.closest(".lg-node");
       if (g && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); openPaper(g.dataset.k); }
     });
+    // 按住拖动
+    const drag = { on: false, x: 0, left: 0, moved: false };
+    scroll.addEventListener("pointerdown", e => {
+      if (e.pointerType !== "mouse" || e.button !== 0) return;
+      drag.on = true; drag.moved = false; drag.x = e.clientX; drag.left = scroll.scrollLeft;
+    });
+    window.addEventListener("pointermove", e => {
+      if (!drag.on) return;
+      const dx = e.clientX - drag.x;
+      if (Math.abs(dx) > 4) { drag.moved = true; scroll.classList.add("dragging"); }
+      if (drag.moved) scroll.scrollLeft = drag.left - dx;
+    });
+    window.addEventListener("pointerup", () => {
+      if (!drag.on) return;
+      drag.on = false; scroll.classList.remove("dragging");
+      setTimeout(() => { drag.moved = false; }, 0);
+    });
+    // 宽度变化时重新排版
+    let rt = null;
+    const onResize = () => { clearTimeout(rt); rt = setTimeout(() => { if (Math.abs(scroll.clientWidth - lastW) > 8) buildGraph(); }, 150); };
+    if (window.ResizeObserver) new ResizeObserver(onResize).observe(scroll); else window.addEventListener("resize", onResize);
+    // 全屏
+    const frame = document.getElementById("lgFrame");
+    const fb = document.getElementById("lgFull");
+    if (!frame.requestFullscreen) fb.hidden = true;
+    fb.addEventListener("click", () => {
+      if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+      else frame.requestFullscreen().catch(() => { fb.hidden = true; });
+    });
+    document.addEventListener("fullscreenchange", () => {
+      fb.textContent = document.fullscreenElement ? "退出全屏" : "全屏查看";
+      setTimeout(buildGraph, 60);
+    });
+  }
+
+  /* ---------- table of contents ---------- */
+  function wireToc() {
+    const links = [...document.querySelectorAll("#toc a")];
+    if (!links.length || !window.IntersectionObserver) return;
+    const map = new Map(links.map(a => [a.getAttribute("href").slice(1), a]));
+    const visible = new Map();
+    const io = new IntersectionObserver(entries => {
+      entries.forEach(en => visible.set(en.target.id, en.isIntersecting ? en.boundingClientRect.top : null));
+      let best = null, bestTop = Infinity;
+      visible.forEach((top, id) => { if (top != null && top < bestTop) { best = id; bestTop = top; } });
+      if (best) links.forEach(a => a.classList.toggle("active", a === map.get(best)));
+    }, { rootMargin: "-10% 0px -60% 0px" });
+    map.forEach((a, id) => { const s = document.getElementById(id); if (s) io.observe(s); });
+  }
+  function renderTocProgress() {
+    const n = PAPERS.filter(p => ["understood", "reproduced"].includes(window.statusOf(p.k))).length;
+    const num = document.getElementById("tocProgress"), bar = document.getElementById("tocProgressBar");
+    if (num) num.textContent = `${n} / ${PAPERS.length}`;
+    if (bar) bar.style.width = (n / PAPERS.length * 100).toFixed(1) + "%";
   }
 
   function renderGraphStatus() {
     Object.values(graph.nodes).forEach(n => {
+      if (!n.g) return;
       const s = window.statusOf(n.p.k);
       ["unread", "reading", "understood", "reproduced"].forEach(c => n.g.classList.toggle("st-" + c, c === s));
     });
@@ -499,6 +603,7 @@
     renderDashboard();
     renderCardStatus();
     renderGraphStatus();
+    renderTocProgress();
     refreshDrawer();
     if (typeof applyFilters === "function") applyFilters();
   }
@@ -507,6 +612,8 @@
   wireDashboard();
   wireDrawerLearning();
   buildGraph();
+  wireGraph();
+  wireToc();
   refresh();
   setSync("local");
   initCloud();

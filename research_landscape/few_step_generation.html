@@ -44,10 +44,10 @@ body {
   padding-right: max(16px, env(safe-area-inset-right, 0px));
   padding-block: 0 64px;
 }
-.wrap { max-width: 920px; margin: 0 auto; display: flex; flex-direction: column; gap: 56px; }
+.wrap { max-width: 1080px; margin: 0 auto; display: flex; flex-direction: column; gap: 64px; min-width: 0; }
 h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; line-height: 1.3; margin: 0; }
 h1 { font-size: clamp(30px, 5vw, 44px); font-weight: 900; letter-spacing: 0.01em; }
-h2 { font-size: 26px; font-weight: 900; }
+h2 { font-size: 28px; font-weight: 900; }
 h3 { font-size: 19px; font-weight: 600; }
 p { margin: 0; }
 a { color: var(--accent); text-underline-offset: 3px; }
@@ -59,7 +59,8 @@ section { display: flex; flex-direction: column; gap: 18px; }
 .sec-head { display: flex; flex-direction: column; gap: 6px; }
 
 /* Hero */
-header.hero { padding-top: 48px; display: flex; flex-direction: column; gap: 16px; border-bottom: 1px solid var(--line); padding-bottom: 28px; }
+header.hero { padding-top: 56px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; border-bottom: 1px solid var(--line); padding-bottom: 36px; }
+.hero-main { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 .hero-meta { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 13px; color: var(--muted); }
 .hero-meta b { color: var(--ink); font-weight: 500; }
 .equation {
@@ -212,7 +213,7 @@ html { scroll-behavior: smooth; }
 .scrim { position: fixed; inset: 0; background: rgba(10, 14, 22, 0.42); z-index: 30; }
 .drawer {
   position: fixed; top: 0; right: 0; bottom: 0; z-index: 31;
-  width: min(760px, 100%); background: var(--surface); border-left: 1px solid var(--line);
+  width: min(820px, 100%); background: var(--surface); border-left: 1px solid var(--line);
   display: flex; flex-direction: column; box-shadow: -12px 0 40px rgba(0,0,0,0.18);
   padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
   padding-right: env(safe-area-inset-right, 0px);
@@ -276,7 +277,7 @@ body.drawer-open { overflow: hidden; }
 .me-dot { width: 8px; height: 8px; border-radius: 2px; }
 .me-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .me-chip { font: inherit; font-size: 13px; padding: 3px 10px; border-radius: 6px; cursor: pointer; border: 1px solid var(--accent); background: var(--accent-soft); color: var(--accent); }
-.me-empty { font-size: 13px; color: var(--muted); }
+.me-empty { font-size: 13px; color: var(--muted); grid-column: 1 / -1; }
 .me-notes { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; }
 .me-note { font: inherit; text-align: left; cursor: pointer; border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 6px; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .me-note:hover { border-color: var(--accent); }
@@ -328,19 +329,20 @@ body.drawer-open { overflow: hidden; }
 .qa-a { font-size: 14px; line-height: 1.8; padding: 10px 12px; background: var(--scratch-soft); border-radius: 6px; overflow-x: auto; }
 
 /* Lineage graph */
-.lg-box { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; overflow-x: auto; }
-.lg-box svg { display: block; }
+.lg-scroll svg { display: block; }
 .lg-lane { fill: var(--surface); }
 .lg-lane.odd { fill: var(--bg); }
 .lg-lane-label { fill: var(--muted); font-family: var(--f-body); font-size: 12px; font-weight: 500; }
 .lg-year-line { stroke: var(--line); stroke-dasharray: 3 4; }
-.lg-year { fill: var(--muted); font-family: var(--f-mono); font-size: 11px; }
+.lg-year { fill: var(--muted); font-family: var(--f-mono); font-size: 12px; font-weight: 600; }
+.lg-q { fill: var(--muted); font-family: var(--f-mono); font-size: 10px; opacity: 0.7; }
+.lg-q-line { stroke: var(--line); stroke-dasharray: 1 5; opacity: 0.7; }
 .lg-edge { fill: none; stroke: var(--line); stroke-width: 1.3; }
 .lg-arrow { fill: var(--line); }
 .lg-arrow-hl { fill: var(--accent); }
 .lg-node { cursor: pointer; outline: none; }
 .lg-node rect { fill: var(--surface); stroke: var(--muted); stroke-width: 1; }
-.lg-node text { fill: var(--ink); font-family: var(--f-body); font-size: 12px; }
+.lg-node text { fill: var(--ink); font-family: var(--f-body); font-size: 12.5px; }
 .lg-node.st-reading rect { fill: var(--accent-soft); stroke: var(--accent); }
 .lg-node.st-understood rect { fill: var(--scratch-soft); stroke: var(--scratch); }
 .lg-node.st-reproduced rect { fill: var(--distill-soft); stroke: var(--distill); }
@@ -356,20 +358,98 @@ svg.focus .lg-edge.hl { opacity: 1; stroke: var(--accent); stroke-width: 1.8; }
 .lg-key.reading::before { background: var(--accent-soft); border-color: var(--accent); }
 .lg-key.understood::before { background: var(--scratch-soft); border-color: var(--scratch); }
 .lg-key.reproduced::before { background: var(--distill-soft); border-color: var(--distill); }
+
+/* ===== Desktop-first layout ===== */
+:root { --rail: 0px; }
+.toc { display: none; }
+.hero-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; align-self: start; }
+.hs { background: var(--surface); padding: 16px 18px; display: flex; flex-direction: column; gap: 4px; }
+.hs b { font-size: 30px; font-weight: 600; letter-spacing: -0.01em; color: var(--accent); line-height: 1.1; }
+.hs span { font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+.paper { transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease; }
+.paper:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); box-shadow: 0 6px 18px -10px rgba(20, 40, 90, 0.35); transform: translateY(-1px); }
+@media (prefers-reduced-motion: reduce) { .paper, .paper:hover { transition: none; transform: none; } }
+@media (min-width: 1000px) {
+  body { font-size: 15.5px; }
+  header.hero { grid-template-columns: minmax(0, 1fr) 320px; align-items: end; }
+  .me-grid { grid-template-columns: 1.2fr 1fr; }
+  .papers { gap: 12px; }
+}
+@media (min-width: 1280px) {
+  :root { --rail: 236px; }
+  body { padding-left: calc(var(--rail) + max(24px, env(safe-area-inset-left, 0px))); padding-right: max(32px, env(safe-area-inset-right, 0px)); }
+  .toc {
+    display: flex; flex-direction: column; gap: 2px; position: fixed; z-index: 6;
+    top: env(safe-area-inset-top, 0px); left: 0; bottom: 0; width: var(--rail);
+    padding: 40px 18px 24px 28px; border-right: 1px solid var(--line); background: var(--surface); overflow-y: auto;
+  }
+  .toc-brand { font-family: var(--f-display); font-weight: 900; font-size: 17px; margin-bottom: 18px; line-height: 1.35; }
+  .toc a { color: var(--muted); text-decoration: none; font-size: 14px; padding: 6px 10px; border-radius: 6px; border-left: 2px solid transparent; }
+  .toc a:hover { color: var(--ink); background: var(--bg); }
+  .toc a.active { color: var(--accent); background: var(--accent-soft); border-left-color: var(--accent); font-weight: 500; }
+  .toc-progress { margin-top: auto; padding: 14px 10px 0; border-top: 1px solid var(--line); display: grid; grid-template-columns: 1fr auto; gap: 6px; font-size: 12.5px; color: var(--muted); }
+  .toc-progress-num { color: var(--ink); font-weight: 600; }
+  .toc-progress-bar { grid-column: 1 / -1; height: 6px; border-radius: 999px; background: var(--neutral-soft); overflow: hidden; }
+  .toc-progress-bar span { display: block; height: 100%; width: 0; background: var(--scratch); border-radius: 999px; transition: width .3s ease; }
+}
+
+/* ===== Lineage graph, full-bleed on desktop ===== */
+.lg-frame { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; }
+@media (min-width: 1000px) {
+  .lg-frame { --bleed: min(1800px, calc(100vw - var(--rail) - 72px)); width: var(--bleed); margin-left: calc(50% - var(--bleed) / 2); }
+}
+.lg-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.lg-hint { font-size: 12.5px; color: var(--muted); }
+.lg-btn { font: inherit; font-size: 13px; cursor: pointer; padding: 5px 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+.lg-btn:hover { border-color: var(--accent); color: var(--accent); }
+.lg-body { display: grid; grid-template-columns: 132px minmax(0, 1fr); min-height: 0; }
+.lg-labels { position: relative; border-right: 1px solid var(--line); background: var(--surface); }
+.lg-label { position: absolute; left: 0; right: 0; display: flex; align-items: center; padding: 0 12px; font-size: 12.5px; font-weight: 500; color: var(--muted); line-height: 1.35; }
+.lg-label.odd { background: var(--bg); }
+.lg-scroll { overflow-x: auto; overflow-y: hidden; cursor: grab; min-width: 0; }
+.lg-scroll.dragging { cursor: grabbing; user-select: none; }
+.lg-frame:fullscreen { width: 100vw; margin: 0; border-radius: 0; border: 0; background: var(--surface); overflow: auto; }
+.lg-frame:fullscreen .lg-body { flex: 1; }
+@media (max-width: 640px) { .lg-body { grid-template-columns: 92px minmax(0, 1fr); } .lg-label { font-size: 11.5px; padding: 0 8px; } }
 </style>
+
+<nav class="toc" id="toc" aria-label="页面目录">
+  <span class="toc-brand">少步生成研究地图</span>
+  <a href="#me">我的学习</a>
+  <a href="#map">全局分类</a>
+  <a href="#timeline">主线演化</a>
+  <a href="#lineage">论文传承图</a>
+  <a href="#branches">六个分支</a>
+  <a href="#board">一步生成成绩表</a>
+  <a href="#problems">开放问题</a>
+  <a href="#path">阅读路线</a>
+  <div class="toc-progress">
+    <span class="toc-progress-label">已读懂</span>
+    <span class="toc-progress-num mono" id="tocProgress">0 / 49</span>
+    <span class="toc-progress-bar"><span id="tocProgressBar"></span></span>
+  </div>
+</nav>
 
 <div class="wrap">
 
 <header class="hero">
+ <div class="hero-main">
   <span class="eyebrow">Few-step generation · Research map</span>
   <h1>少步生成研究地图</h1>
   <p class="lede">从 1000 步到 1 步：把一步、少步生成领域拆成六个分支，整理每条线在解决什么问题、做到了哪一步、还卡在哪里。整理时假定读者已经学过 DDPM、SMLD、EDM、Flow Matching、ReFlow、CM、DSB、FMM 和 MeanFlow。</p>
-  <div class="equation"><span class="lab">核心对象</span>X<sub>s→t</sub>(x<sub>s</sub>) = x<sub>s</sub> + ∫<sub>s</sub><sup>t</sup> v(x<sub>τ</sub>, τ) dτ　　<span class="lab">· 学会它，就能用 1 次网络调用 (1 NFE) 从噪声跳到数据</span></div>
+  <div class="equation"><span class="lab">核心对象</span>X<sub>s→t</sub>(x<sub>s</sub>) = x<sub>s</sub> + ∫<sub>s</sub><sup>t</sup> v(x<sub>τ</sub>, τ) dτ　<span class="lab">· 学会它，就能 1 次网络调用从噪声跳到数据</span></div>
   <div class="hero-meta">
     <span>检索截至 <b class="mono">2026-11-11</b></span>
     <span>收录 <b class="mono" id="paperTotal">—</b> 篇代表工作</span>
     <span>点开任意论文卡片可看详细解读</span>
   </div>
+ </div>
+ <aside class="hero-stats" aria-label="关键数字">
+  <div class="hs"><b class="mono">49</b><span>篇代表工作，每篇都有解读</span></div>
+  <div class="hs"><b class="mono">6</b><span>个技术分支 + 跨模态扩展</span></div>
+  <div class="hs"><b class="mono">43</b><span>道自测题，附解答</span></div>
+  <div class="hs"><b class="mono">1.19</b><span>ImageNet 256 一步 FID 当前最好（Priming）</span></div>
+ </aside>
 </header>
 
 <section id="me">
@@ -524,7 +604,16 @@ svg.focus .lg-edge.hl { opacity: 1; stroke: var(--accent); stroke-width: 1.8; }
     <h2>谁继承了谁的想法</h2>
     <p class="lede">横轴是时间，每条泳道是一个分支。鼠标移到论文上会高亮它的上游和下游，点击打开解读。节点颜色就是你的阅读状态。连线是整理者根据论文内容归纳的思想传承，不等于引用关系。</p>
   </div>
-  <div class="lg-box"><svg id="lineageSvg" role="img" aria-label="少步生成论文的传承关系图"></svg></div>
+  <div class="lg-frame" id="lgFrame">
+    <div class="lg-toolbar">
+      <span class="lg-hint">时间轴按论文密度伸缩：论文多的时段拉宽。可以按住鼠标左右拖动。</span>
+      <button class="lg-btn" id="lgFull" type="button">全屏查看</button>
+    </div>
+    <div class="lg-body">
+      <div class="lg-labels" id="lgLabels" aria-hidden="true"></div>
+      <div class="lg-scroll" id="lgScroll"><svg id="lineageSvg" role="img" aria-label="少步生成论文的传承关系图"></svg></div>
+    </div>
+  </div>
   <div class="lg-legend">
     <span class="lg-key unread">未读</span><span class="lg-key reading">在读</span><span class="lg-key understood">读懂</span><span class="lg-key reproduced">已复现</span>
   </div>
