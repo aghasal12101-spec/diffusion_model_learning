@@ -1,0 +1,698 @@
+<title>少步生成研究地图</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@600;900&display=swap">
+<style>
+/* Layout: a field map. One narrow reading column; a 2×2 "teacher × matching target" chart anchors the page, branches follow as chapters, papers as compact index cards. */
+:root {
+  --bg: #f4f6f9;
+  --surface: #ffffff;
+  --ink: #141c29;
+  --muted: #586374;
+  --line: #d9dfe8;
+  --accent: #1f4fd1;
+  --accent-soft: #e5ecfd;
+  --scratch: #0b7f62;
+  --scratch-soft: #dff3ec;
+  --distill: #a8590a;
+  --distill-soft: #f8ebdb;
+  --neutral-soft: #eceff4;
+  --f-display: "Noto Serif SC", "Songti SC", "SimSun", serif;
+  --f-body: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e131a; --surface: #151c26; --ink: #e5eaf1; --muted: #97a2b3; --line: #273140;
+    --accent: #84a6ff; --accent-soft: #1b2744; --scratch: #44c9a0; --scratch-soft: #12302a;
+    --distill: #eaa252; --distill-soft: #36260f; --neutral-soft: #1d2531; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e131a; --surface: #151c26; --ink: #e5eaf1; --muted: #97a2b3; --line: #273140;
+  --accent: #84a6ff; --accent-soft: #1b2744; --scratch: #44c9a0; --scratch-soft: #12302a;
+  --distill: #eaa252; --distill-soft: #36260f; --neutral-soft: #1d2531; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--f-body); font-size: 15px; line-height: 1.75;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 64px;
+}
+.wrap { max-width: 920px; margin: 0 auto; display: flex; flex-direction: column; gap: 56px; }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; line-height: 1.3; margin: 0; }
+h1 { font-size: clamp(30px, 5vw, 44px); font-weight: 900; letter-spacing: 0.01em; }
+h2 { font-size: 26px; font-weight: 900; }
+h3 { font-size: 19px; font-weight: 600; }
+p { margin: 0; }
+a { color: var(--accent); text-underline-offset: 3px; }
+a:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+.mono { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+.eyebrow { font-family: var(--f-mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.lede { color: var(--muted); max-width: 62ch; }
+section { display: flex; flex-direction: column; gap: 18px; }
+.sec-head { display: flex; flex-direction: column; gap: 6px; }
+
+/* Hero */
+header.hero { padding-top: 48px; display: flex; flex-direction: column; gap: 16px; border-bottom: 1px solid var(--line); padding-bottom: 28px; }
+.hero-meta { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 13px; color: var(--muted); }
+.hero-meta b { color: var(--ink); font-weight: 500; }
+.equation {
+  font-family: var(--f-mono); font-size: 14px; padding: 12px 16px; background: var(--surface);
+  border: 1px solid var(--line); border-radius: 6px; overflow-x: auto; white-space: nowrap;
+}
+.equation .lab { color: var(--muted); margin-right: 12px; }
+
+/* Legend + tags */
+.tag { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 1px 8px; border-radius: 999px; white-space: nowrap; font-weight: 500; }
+.tag.scratch { background: var(--scratch-soft); color: var(--scratch); }
+.tag.distill { background: var(--distill-soft); color: var(--distill); }
+.tag.mixed { background: var(--neutral-soft); color: var(--muted); }
+.tag.domain { background: var(--accent-soft); color: var(--accent); }
+.tag.learned { background: transparent; border: 1px solid var(--accent); color: var(--accent); }
+
+/* Map */
+.map-box { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; overflow-x: auto; }
+.map-box svg { display: block; width: 100%; min-width: 600px; height: auto; }
+.m-axis { stroke: var(--line); stroke-width: 1.5; }
+.m-axis-lab { fill: var(--muted); font-family: var(--f-body); font-size: 12px; }
+.m-quad { fill: var(--muted); font-family: var(--f-mono); font-size: 10.5px; letter-spacing: 0.08em; }
+.m-node rect { stroke-width: 1.5; }
+.m-node text { font-family: var(--f-body); font-size: 13px; font-weight: 700; }
+.m-node .sub { font-weight: 400; font-size: 11px; fill: var(--muted); }
+.m-node.s rect { fill: var(--scratch-soft); stroke: var(--scratch); }
+.m-node.s text.t { fill: var(--scratch); }
+.m-node.d rect { fill: var(--distill-soft); stroke: var(--distill); }
+.m-node.d text.t { fill: var(--distill); }
+.m-node.x rect { fill: var(--neutral-soft); stroke: var(--muted); }
+.m-node.x text.t { fill: var(--ink); }
+.m-node a { cursor: pointer; }
+.m-node a:hover rect { stroke-width: 2.5; }
+.m-arrow { stroke: var(--accent); stroke-width: 1.5; fill: none; stroke-dasharray: 4 4; }
+.m-arrow-lab { fill: var(--accent); font-family: var(--f-body); font-size: 11.5px; font-weight: 500; }
+.m-dot { fill: var(--accent); }
+.map-note { font-size: 13px; color: var(--muted); }
+
+/* Timeline */
+.timeline { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; border-top: 2px solid var(--ink); }
+.tl-col { padding: 12px 14px 4px 0; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.tl-col + .tl-col { padding-left: 14px; border-left: 1px solid var(--line); }
+.tl-year { font-family: var(--f-mono); font-weight: 600; font-size: 20px; }
+.tl-col ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; }
+.tl-col li b { font-weight: 700; }
+.tl-col .theme { font-size: 12.5px; color: var(--muted); }
+@media (max-width: 720px) {
+  .timeline { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tl-col:nth-child(3) { padding-left: 0; border-left: 0; }
+  .tl-col:nth-child(n+3) { border-top: 1px solid var(--line); }
+}
+
+/* Filter bar */
+.filters {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+  background: var(--bg); padding-block: 10px; border-bottom: 1px solid var(--line);
+  display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.fgroup { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.fgroup .flabel { font-size: 12px; color: var(--muted); margin-right: 2px; }
+.chip {
+  font: inherit; font-size: 13px; padding: 3px 11px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+}
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.fcount { font-size: 12px; color: var(--muted); margin-left: auto; }
+
+/* Branch chapters */
+.branch { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 20px 28px; padding-top: 28px; border-top: 1px solid var(--line); scroll-margin-top: 72px; }
+.branch-side { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.branch-code { font-family: var(--f-mono); font-size: 13px; color: var(--muted); }
+.branch-main { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.core { font-family: var(--f-mono); font-size: 13px; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; overflow-x: auto; white-space: nowrap; }
+.link-learned { font-size: 13.5px; padding-left: 12px; border-left: 2px solid var(--accent); color: var(--ink); }
+.link-learned b { color: var(--accent); font-weight: 500; }
+.open-q { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
+.open-q li::marker { color: var(--accent); }
+.sub-h { font-size: 12px; font-family: var(--f-mono); letter-spacing: 0.1em; color: var(--muted); text-transform: uppercase; }
+@media (max-width: 720px) { .branch { grid-template-columns: minmax(0, 1fr); } }
+
+.papers { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 620px) { .papers { grid-template-columns: minmax(0, 1fr); } }
+.paper {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px;
+  display: flex; flex-direction: column; gap: 6px; min-width: 0;
+}
+.paper.new { border-color: var(--accent); }
+.p-top { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.p-name { font-weight: 700; font-size: 15px; }
+.p-name a { color: var(--ink); text-decoration: none; }
+.p-name a:hover { color: var(--accent); text-decoration: underline; }
+.p-date { font-family: var(--f-mono); font-size: 12px; color: var(--muted); white-space: nowrap; }
+.p-idea { font-size: 13.5px; line-height: 1.65; }
+.p-tags { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+.p-metric { font-family: var(--f-mono); font-size: 12px; color: var(--muted); }
+.new-badge { font-family: var(--f-mono); font-size: 10.5px; color: var(--accent); letter-spacing: 0.08em; }
+.empty { font-size: 13px; color: var(--muted); }
+
+/* Leaderboard */
+.board { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 18px 18px 12px; display: flex; flex-direction: column; gap: 8px; }
+.b-row { display: grid; grid-template-columns: 150px minmax(0, 1fr) 52px; gap: 12px; align-items: center; font-size: 13.5px; }
+.b-name { min-width: 0; overflow-wrap: anywhere; line-height: 1.3; }
+.b-name small { display: block; color: var(--muted); font-size: 11.5px; }
+.b-track { position: relative; height: 16px; background: repeating-linear-gradient(to right, var(--line) 0 1px, transparent 1px 25%); }
+.b-bar { position: absolute; left: 0; top: 2px; bottom: 2px; border-radius: 0 3px 3px 0; }
+.b-bar.scratch { background: var(--scratch); }
+.b-bar.distill { background: var(--distill); }
+.b-bar.mixed { background: var(--muted); }
+.b-val { font-family: var(--f-mono); font-variant-numeric: tabular-nums; text-align: right; font-weight: 600; }
+.b-axis { display: grid; grid-template-columns: 150px minmax(0, 1fr) 52px; gap: 12px; font-family: var(--f-mono); font-size: 11px; color: var(--muted); }
+.b-ticks { display: flex; justify-content: space-between; }
+.b-legend { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 6px; border-top: 1px solid var(--line); margin-top: 4px; }
+@media (max-width: 560px) {
+  .b-row, .b-axis { grid-template-columns: 104px minmax(0, 1fr) 44px; gap: 8px; }
+}
+.caveat { font-size: 13px; color: var(--muted); }
+
+/* Problems */
+.problems { display: flex; flex-direction: column; gap: 0; border-top: 2px solid var(--ink); }
+.prob { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 4px 16px; padding: 16px 0; border-bottom: 1px solid var(--line); }
+.prob-n { font-family: var(--f-mono); font-size: 20px; font-weight: 600; color: var(--accent); }
+.prob h3 { font-size: 17px; }
+.prob p { font-size: 14px; }
+.prob .entry { grid-column: 2; font-size: 13.5px; color: var(--muted); }
+.prob .entry b { color: var(--ink); font-weight: 500; }
+.heat { font-family: var(--f-mono); font-size: 11.5px; color: var(--muted); margin-left: 8px; letter-spacing: 0.05em; font-weight: 400; }
+
+/* Reading path */
+.path { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 720px) { .path { grid-template-columns: minmax(0, 1fr); } }
+.stage { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.stage ol { margin: 0; padding-left: 20px; font-size: 13.5px; display: flex; flex-direction: column; gap: 4px; }
+.stage .goal { font-size: 13px; color: var(--muted); }
+
+footer { font-size: 12.5px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 18px; display: flex; flex-direction: column; gap: 6px; }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+html { scroll-behavior: smooth; }
+</style>
+
+<div class="wrap">
+
+<header class="hero">
+  <span class="eyebrow">Few-step generation · Research map</span>
+  <h1>少步生成研究地图</h1>
+  <p class="lede">从 1000 步到 1 步：把一步、少步生成领域拆成六个分支，整理每条线在解决什么问题、做到了哪一步、还卡在哪里。整理时假定读者已经学过 DDPM、SMLD、EDM、Flow Matching、ReFlow、CM、DSB、FMM 和 MeanFlow。</p>
+  <div class="equation"><span class="lab">核心对象</span>X<sub>s→t</sub>(x<sub>s</sub>) = x<sub>s</sub> + ∫<sub>s</sub><sup>t</sup> v(x<sub>τ</sub>, τ) dτ　　<span class="lab">· 学会它，就能用 1 次网络调用 (1 NFE) 从噪声跳到数据</span></div>
+  <div class="hero-meta">
+    <span>检索截至 <b class="mono">2026-11-11</b></span>
+    <span>收录 <b class="mono" id="paperTotal">—</b> 篇代表工作</span>
+    <span>数字多来自论文摘要或二手摘要，引用前请核对原文</span>
+  </div>
+</header>
+
+<section id="map">
+  <div class="sec-head">
+    <span class="eyebrow">一张图看全局</span>
+    <h2>两个问题，把领域分成四块</h2>
+    <p class="lede">横轴问：训练时需不需要一个预训练好的多步模型当老师？纵轴问：学的是"轨迹上的映射"，还是只要求"生成的分布对"？2026 年最大的变化是右下角：不用老师、直接匹配分布的方法，在 ImageNet 一步生成上拿到了最好的 FID。</p>
+  </div>
+  <div class="map-box">
+    <svg viewBox="0 0 680 420" role="img" aria-label="少步生成方法的二维分类图">
+      <line class="m-axis" x1="340" y1="40" x2="340" y2="380"/>
+      <line class="m-axis" x1="40" y1="210" x2="640" y2="210"/>
+      <text class="m-axis-lab" x="44" y="400">← 依赖预训练老师（蒸馏）</text>
+      <text class="m-axis-lab" x="636" y="400" text-anchor="end">从头训练（无老师）→</text>
+      <text class="m-axis-lab" x="340" y="28" text-anchor="middle">↑ 匹配轨迹 / flow map（逐点回归）</text>
+      <text class="m-axis-lab" x="340" y="416" text-anchor="middle" dy="-2"></text>
+      <text class="m-quad" x="52" y="60">蒸馏 × 轨迹</text>
+      <text class="m-quad" x="628" y="60" text-anchor="end">从头 × 轨迹</text>
+      <text class="m-quad" x="52" y="372">蒸馏 × 分布</text>
+      <text class="m-quad" x="628" y="372" text-anchor="end">从头 × 分布</text>
+      <text class="m-axis-lab" x="340" y="384" text-anchor="middle">↓ 匹配分布（KL / 对抗 / MMD / OT）</text>
+
+      <g class="m-node d"><a href="#b-reflow">
+        <rect x="64" y="78" width="168" height="54" rx="6"/>
+        <text class="t" x="78" y="101">拉直轨迹 ReFlow</text>
+        <text class="sub" x="78" y="121">需要先训好一个流</text>
+      </a></g>
+      <g class="m-node x"><a href="#b-cm">
+        <rect x="196" y="146" width="290" height="50" rx="6"/>
+        <text class="t" x="210" y="167">一致性模型 CM</text>
+        <text class="sub" x="210" y="186">CD 在左（蒸馏），CT / sCM 在右（从头）</text>
+      </a></g>
+      <g class="m-node s"><a href="#b-flowmap">
+        <rect x="414" y="70" width="210" height="62" rx="6"/>
+        <text class="t" x="428" y="94">Flow map / 平均速度</text>
+        <text class="sub" x="428" y="114">MeanFlow · TVM · 自蒸馏</text>
+      </a></g>
+      <g class="m-node d"><a href="#b-dmd">
+        <rect x="64" y="262" width="190" height="62" rx="6"/>
+        <text class="t" x="78" y="286">分布匹配蒸馏 DMD</text>
+        <text class="sub" x="78" y="306">工业界视频/文生图主力</text>
+      </a></g>
+      <g class="m-node x"><a href="#b-adv">
+        <rect x="236" y="232" width="190" height="54" rx="6"/>
+        <text class="t" x="250" y="255">对抗训练</text>
+        <text class="sub" x="250" y="275">APT 后训练 · AFM 从头</text>
+      </a></g>
+      <g class="m-node s"><a href="#b-dist">
+        <rect x="440" y="262" width="184" height="80" rx="6"/>
+        <text class="t" x="454" y="286">分布层面从头训练</text>
+        <text class="sub" x="454" y="306">IMM · Drifting</text>
+        <text class="sub" x="454" y="324">W-Flow · Priming</text>
+      </a></g>
+
+      <path class="m-arrow" d="M 520 134 C 560 180, 560 220, 530 258"/>
+      <text class="m-arrow-lab" x="566" y="200">2026 SOTA 迁移</text>
+
+      <circle class="m-dot" cx="226" cy="90" r="4"/>
+      <circle class="m-dot" cx="476" cy="160" r="4"/>
+      <circle class="m-dot" cx="614" cy="82" r="4"/>
+    </svg>
+  </div>
+  <p class="map-note">蓝点表示你已经学过的方法（ReFlow、CM、FMM / MeanFlow）。点击方块跳到对应分支。颜色：<span class="tag distill">需要老师</span> <span class="tag scratch">从头训练</span> <span class="tag mixed">两者都有</span></p>
+</section>
+
+<section id="timeline">
+  <div class="sec-head">
+    <span class="eyebrow">主线演化</span>
+    <h2>四年里发生了什么</h2>
+  </div>
+  <div class="timeline">
+    <div class="tl-col">
+      <span class="tl-year">2023</span>
+      <span class="theme">把多步压成一步</span>
+      <ul>
+        <li><b>CM</b> 提出自洽性约束</li>
+        <li><b>InstaFlow</b> 用 ReFlow 做文生图一步</li>
+        <li><b>DMD</b> 用两个 score 的差做蒸馏</li>
+      </ul>
+    </div>
+    <div class="tl-col">
+      <span class="tl-year">2024</span>
+      <span class="theme">让一致性训练稳定、可扩展</span>
+      <ul>
+        <li><b>iCT / ECT / sCM</b> 稳定 CT，连续时间化</li>
+        <li><b>DMD2</b> 加 GAN 项，去掉回归</li>
+        <li><b>Shortcut</b>、<b>FMM</b> 把步长作为输入</li>
+      </ul>
+    </div>
+    <div class="tl-col">
+      <span class="tl-year">2025</span>
+      <span class="theme">flow map 统一视角</span>
+      <ul>
+        <li><b>MeanFlow</b> 平均速度恒等式，从头 1-NFE</li>
+        <li><b>IMM</b> 矩匹配，CM 是其特例</li>
+        <li><b>AYF</b>、<b>自蒸馏框架</b>、<b>TVM</b></li>
+        <li><b>rCM</b> 把 sCM 推到 14B 视频</li>
+      </ul>
+    </div>
+    <div class="tl-col">
+      <span class="tl-year">2026</span>
+      <span class="theme">分布层面方法反超</span>
+      <ul>
+        <li><b>pMF / iMF</b> 像素空间、改进 MeanFlow</li>
+        <li><b>Drifting</b> 1-NFE FID 1.54</li>
+        <li><b>W-Flow</b> 1.29，<b>Priming</b> 1.19</li>
+        <li>少步扩展到语言、RL 对齐</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="branches">
+  <div class="sec-head">
+    <span class="eyebrow">六个分支</span>
+    <h2>每条线：核心对象、代表工作、卡点</h2>
+    <p class="lede">蓝框卡片是 2026 年的新工作。用下面的筛选条按训练方式和应用场景过滤论文。</p>
+  </div>
+
+  <div class="filters" role="group" aria-label="论文筛选">
+    <div class="fgroup" data-group="train">
+      <span class="flabel">训练方式</span>
+      <button class="chip" type="button" id="f-train-all" data-v="all" aria-pressed="true">全部</button>
+      <button class="chip" type="button" id="f-train-scratch" data-v="scratch" aria-pressed="false">从头训练</button>
+      <button class="chip" type="button" id="f-train-distill" data-v="distill" aria-pressed="false">需要老师</button>
+    </div>
+    <div class="fgroup" data-group="domain">
+      <span class="flabel">场景</span>
+      <button class="chip" type="button" id="f-dom-all" data-v="all" aria-pressed="true">全部</button>
+      <button class="chip" type="button" id="f-dom-img" data-v="图像" aria-pressed="false">图像</button>
+      <button class="chip" type="button" id="f-dom-vid" data-v="视频" aria-pressed="false">视频</button>
+      <button class="chip" type="button" id="f-dom-lang" data-v="语言" aria-pressed="false">语言/离散</button>
+      <button class="chip" type="button" id="f-dom-rl" data-v="对齐" aria-pressed="false">对齐/RL</button>
+    </div>
+    <div class="fgroup">
+      <button class="chip" type="button" id="f-new" data-v="new" aria-pressed="false">只看 2026</button>
+    </div>
+    <span class="fcount" id="fcount"></span>
+  </div>
+
+  <div id="branchList"></div>
+</section>
+
+<section id="board">
+  <div class="sec-head">
+    <span class="eyebrow">ImageNet 256×256 · class-conditional · 1 NFE</span>
+    <h2>一步生成成绩表</h2>
+    <p class="lede">FID 越低越好。条形长度按 0 到 4 的同一刻度画，参考线间隔 1.0。</p>
+  </div>
+  <div class="board" id="boardBox">
+    <div class="b-axis"><span></span><div class="b-ticks"><span>0</span><span>1</span><span>2</span><span>3</span><span>4</span></div><span></span></div>
+  </div>
+  <p class="caveat">这些数字不能直接横向比较：训练轮数、模型大小、是否用 CFG、潜空间还是像素空间、FID 采样数都不同。标"二手"的数字来自第三方摘要表，没有对照原文核实。作为参照，多步模型（如 SiT/DiT + REPA）大约在 1.4 左右。</p>
+</section>
+
+<section id="problems">
+  <div class="sec-head">
+    <span class="eyebrow">待解决的问题</span>
+    <h2>八个开放问题，以及可能的切入点</h2>
+    <p class="lede">按"对学生是否友好"粗排：靠前的问题更适合在有限算力下做出东西。热度是根据检索到的论文数量做的主观判断。</p>
+  </div>
+  <div class="problems">
+    <div class="prob">
+      <span class="prob-n mono">1</span>
+      <div><h3>flow map 到底是不是必要的？<span class="heat">热度 ●●●</span></h3>
+      <p>Priming Models 的标题就是"Are We Overthinking One-Step Generation?"：不学轨迹，先做固定噪声水平的重建、再做分布层面后训练，就拿到 1.19。轨迹约束究竟提供了什么，是优化上的稳定性、可多步采样，还是只是一种正则？</p></div>
+      <p class="entry"><b>切入点：</b>在 CIFAR-10 / ImageNet-64 上做受控对比，同一网络、同一算力下比较 MeanFlow、IMM、Drifting 风格目标，看多步采样能力和训练稳定性的取舍。</p>
+    </div>
+    <div class="prob">
+      <span class="prob-n mono">2</span>
+      <div><h3>从头训练的一步模型能否扩展到文生图和视频？<span class="heat">热度 ●●●</span></h3>
+      <p>ImageNet 上从头训练已经追平甚至超过多步模型，但工业界的大模型仍几乎都靠 DMD / rCM / APT 蒸馏。W-Flow 把文生图列为未来工作，Priming 报告了 GenEval 0.82（二手），但还没有大规模验证。</p></div>
+      <p class="entry"><b>切入点：</b>小规模文生图（如 CC3M 级数据）上验证分布层面方法的条件生成与 CFG 行为。</p>
+    </div>
+    <div class="prob">
+      <span class="prob-n mono">3</span>
+      <div><h3>训练目标的方差和稳定性<span class="heat">热度 ●●○</span></h3>
+      <p>MeanFlow 类方法依赖 JVP，目标方差大、显存代价高；TVM 发现标准 DiT 不满足 Lipschitz 条件，需要改架构；还有工作专门研究 MeanFlow 的方差削减和"曲率瓶颈"。</p></div>
+      <p class="entry"><b>切入点：</b>无 JVP 的有限差分替代、控制变量法、时间对 (r, t) 的采样分布设计，这些都是小算力能做的问题。</p>
+    </div>
+    <div class="prob">
+      <span class="prob-n mono">4</span>
+      <div><h3>多样性和保真度的取舍<span class="heat">热度 ●●●</span></h3>
+      <p>DMD 用 reverse KL，会模式坍缩、过饱和；sCM 用前向目标，覆盖模式但细节差。rCM 把两者组合，Data-Forcing 用真实数据纠偏。还没有一个原则性的散度选择理论。</p></div>
+      <p class="entry"><b>切入点：</b>在可解析的混合高斯上系统比较各类散度对模式覆盖的影响，再推到图像。</p>
+    </div>
+    <div class="prob">
+      <span class="prob-n mono">5</span>
+      <div><h3>一步模型里的引导（guidance）<span class="heat">热度 ●●○</span></h3>
+      <p>CFG 本质是多步采样里的速度外推，一步模型没法在采样时做。iMF 把引导强度作为条件输入，Variational Flow Maps 指出 flow map 存在"guidance gap"。逆问题、奖励引导也受同样限制。</p></div>
+      <p class="entry"><b>切入点：</b>把引导强度、奖励函数蒸进 flow map 的条件输入；或研究一步模型上的推理时搜索。</p>
+    </div>
+    <div class="prob">
+      <span class="prob-n mono">6</span>
+      <div><h3>理论保证<span class="heat">热度 ●○○</span></h3>
+      <p>一步生成器的统计保证很少，已有结果要么有维数灾难、要么依赖不实用的损失。TVM 给出了 W<sub>2</sub> 上界（需要 Lipschitz），W-Flow 证明了有限粒子动力学收敛。"一步模型何时能泛化而不是记忆"几乎没有研究。</p></div>
+      <p class="entry"><b>切入点：</b>适合数学背景好的同学；可从低维流形数据上的误差传播分析开始。</p>
+    </div>
+    <div class="prob">
+      <span class="prob-n mono">7</span>
+      <div><h3>少步模型的后训练与 RL 对齐<span class="heat">热度 ●●○</span></h3>
+      <p>Flow-GRPO 类方法依赖多步随机采样来做探索，一步模型没有这个随机性。Flow-Map GRPO 用锚定的随机组合解决，Meta Flow Maps 和 DMDR 把奖励接进蒸馏。</p></div>
+      <p class="entry"><b>切入点：</b>一步/两步模型上的奖励优化，比较"先蒸馏再 RL"和"蒸馏时一起做 RL"。</p>
+    </div>
+    <div class="prob">
+      <span class="prob-n mono">8</span>
+      <div><h3>离散数据和语言的少步生成<span class="heat">热度 ●●○</span></h3>
+      <p>掩码扩散语言模型少步时质量下降严重。FMLM 走连续空间 + flow map 路线，CDLM、Coupling Models 尝试离散空间里的直接一步映射，T3D、DiDi-Instruct 走蒸馏。</p></div>
+      <p class="entry"><b>切入点：</b>把你熟悉的 flow map 理论搬到单纯形或离散状态空间；DSB 的桥视角在这里也有用武之地。</p>
+    </div>
+  </div>
+</section>
+
+<section id="path">
+  <div class="sec-head">
+    <span class="eyebrow">建议的阅读顺序</span>
+    <h2>从你已经学过的地方接上</h2>
+  </div>
+  <div class="path">
+    <div class="stage">
+      <span class="sub-h">第一阶段 · 补齐统一视角</span>
+      <ol>
+        <li>Boffi 等，《How to build a consistency model》</li>
+        <li>sCM（连续时间 CM）</li>
+        <li>Align Your Flow</li>
+        <li>TVM</li>
+      </ol>
+      <p class="goal">目标：能把 CM、Shortcut、MeanFlow、TVM 写成同一个 flow map 目标的不同特例。</p>
+    </div>
+    <div class="stage">
+      <span class="sub-h">第二阶段 · 分布层面</span>
+      <ol>
+        <li>DMD2（理解 score 差作为梯度）</li>
+        <li>IMM（矩匹配与 CM 的关系）</li>
+        <li>Drifting Models</li>
+        <li>W-Flow、Priming Models</li>
+      </ol>
+      <p class="goal">目标：说清楚"匹配轨迹"和"匹配分布"各自的优化信号从哪来。</p>
+    </div>
+    <div class="stage">
+      <span class="sub-h">第三阶段 · 选题</span>
+      <ol>
+        <li>pMF、iMF（工程细节）</li>
+        <li>MeanFlow 方差削减</li>
+        <li>rCM、Data-Forcing（大规模经验）</li>
+        <li>按兴趣选一个扩展方向</li>
+      </ol>
+      <p class="goal">目标：从开放问题 1、3、4 里挑一个，先在 CIFAR-10 上复现基线。</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <span>整理日期 2026-11-11。论文信息来自 arXiv、会议页面与第三方摘要，未逐篇精读，数字和归类以原文为准。</span>
+  <span>标注"二手"的成绩来自第三方表格；带 2026 标签的部分工作尚未经过同行评审。</span>
+</footer>
+
+</div>
+
+<script>
+const BRANCHES = [
+  {
+    id: "b-cm", code: "分支 1", name: "一致性模型", train: "mixed",
+    core: "f<sub>θ</sub>(x<sub>t</sub>, t) ≈ x<sub>0</sub>，要求同一条 PF-ODE 轨迹上所有点映射到同一终点",
+    idea: "最早的一步生成主线。离散时间 CM 训练不稳定，需要精心设计步长课程；sCM 把它连续时间化，用 JVP 计算切线，扩展到 1.5B；rCM 进一步加上 score 蒸馏正则，推到 14B 视频模型。",
+    learned: "你学过 CM。下一步重点看 <b>sCM 的连续时间推导</b>，它和 MeanFlow 的恒等式是同一类东西。",
+    open: ["前向目标偏向覆盖模式，细节质量不如 DMD", "JVP 在大模型、FlashAttention 下的工程代价", "CT（从头）和 CD（蒸馏）之间仍有差距"]
+  },
+  {
+    id: "b-flowmap", code: "分支 2", name: "Flow map 与平均速度", train: "scratch",
+    core: "u(z<sub>t</sub>, r, t) = 1/(t−r) ∫<sub>r</sub><sup>t</sup> v(z<sub>τ</sub>, τ) dτ　⇒　u = v − (t−r) · d u / dt",
+    idea: "不再只学 t→0 的映射，而是学任意两个时间之间的跳跃 X<sub>s→t</sub>。这样一个网络同时支持一步和多步采样。核心技巧是用 flow map 自身满足的微分恒等式构造训练目标，从而不需要外部老师（自蒸馏）。",
+    learned: "你学过 FMM 和 MeanFlow。这是你最容易出成果的分支。建议读 Boffi 等的 <b>Eulerian / Lagrangian / Progressive</b> 三分类，它能把 MeanFlow、Shortcut、TVM 放进同一框架。",
+    open: ["JVP 带来的方差和显存开销", "一步 FID 已被分布层面方法超过", "条件生成与引导存在 guidance gap"]
+  },
+  {
+    id: "b-dmd", code: "分支 3", name: "分布匹配蒸馏", train: "distill",
+    core: "∇<sub>θ</sub> KL(p<sub>fake</sub> ‖ p<sub>real</sub>) ≈ E[ (s<sub>fake</sub>(x<sub>t</sub>) − s<sub>real</sub>(x<sub>t</sub>)) · ∂x / ∂θ ]",
+    idea: "用老师的 score 当真实分布、再在线训练一个 fake score 网络跟踪学生分布，二者之差就是学生的更新方向。DMD2 加入 GAN 损失后，成为工业界视频和文生图加速的主力。2025–2026 的工作集中在修复 reverse KL 带来的模式坍缩和过饱和，并把奖励接进来。",
+    learned: "和你学过的 score matching 直接相关：这里 score 被当成分布的梯度信号来用，而不是用来采样。",
+    open: ["多样性下降、过饱和", "Decoupled DMD 认为真正起作用的是 CFG 增强，分布匹配只是稳定器，机制仍有争议", "依赖强大的老师，上限受老师限制"]
+  },
+  {
+    id: "b-adv", code: "分支 4", name: "对抗训练", train: "mixed",
+    core: "min<sub>G</sub> max<sub>D</sub>　E[log D(x)] + E[log(1 − D(G(z)))]，但 G 被约束为 ODE 的确定性映射",
+    idea: "GAN 以新的形式回归。APT 用预训练的扩散模型做初始化、再直接对真实数据做对抗训练，实现视频实时一步生成。Adversarial Flow Models 让生成器学 flow matching 的那个确定性 OT 映射，可以从头训练。NextGAN 关注对抗训练的可扩展性。",
+    learned: "可以把它看成 ReFlow 的\"直线映射\"思想加上判别器：映射仍然是确定的，只是监督信号换成了判别器。",
+    open: ["训练稳定性和超参数敏感", "结构与文本对齐的退化", "判别器给出的梯度方向缺少理论刻画"]
+  },
+  {
+    id: "b-dist", code: "分支 5", name: "分布层面从头训练", train: "scratch",
+    core: "不学轨迹：直接让生成器 G(z) 的推前分布逼近 p<sub>data</sub>，用 MMD / 漂移场 / Wasserstein 梯度流提供更新方向",
+    idea: "2026 年最活跃的方向，也是目前 ImageNet 一步生成的 SOTA 所在。IMM 用矩匹配统一了 CM；Drifting 在训练过程中让推前分布\"漂移\"到数据分布；W-Flow 用 Sinkhorn 散度的 Wasserstein 梯度流，再把整个演化压缩成一步；Priming 认为连 flow map 都不需要。",
+    learned: "思路接近你学过的 DSB：都是在分布空间里构造一条从先验到数据的演化，只是这里最后把演化\"压\"进一个一步生成器。",
+    open: ["是否能扩展到文生图、视频", "粒子 / 批内估计带来的批大小依赖", "和轨迹方法相比，失去了多步采样提升质量的能力"]
+  },
+  {
+    id: "b-reflow", code: "分支 6", name: "拉直轨迹", train: "distill",
+    core: "用 (x<sub>0</sub>, X<sub>0→1</sub>(x<sub>0</sub>)) 的耦合重新训练流，使轨迹变直，Euler 一步误差变小",
+    idea: "ReFlow 一系思路较早，现在更多作为其他方法的组件：OT 耦合、minibatch OT、改进的 ReFlow 训练技巧被用在 flow map 和对抗方法里。OT-NFM 把 OT 耦合与神经流结合，做无 ODE 的一步生成。",
+    learned: "你学过 ReFlow。它单独作为方向已不是热点，但\"耦合决定轨迹曲率\"这个观点仍贯穿其它分支。",
+    open: ["多轮 ReFlow 误差累积", "合成耦合的生成代价高"]
+  }
+];
+
+const PAPERS = [
+  // 分支 1
+  { b:"b-cm", n:"Consistency Models", d:"2023-03", v:"ICML 2023", t:"mixed", dom:["图像"], url:"https://arxiv.org/abs/2303.01469", idea:"提出自洽性约束，CD 与 CT 两种训练方式。" },
+  { b:"b-cm", n:"sCM", d:"2024-10", v:"ICLR 2025", t:"mixed", dom:["图像"], url:"https://arxiv.org/abs/2410.11081", idea:"连续时间 CM，统一参数化并解决训练不稳定，扩展到 1.5B。" },
+  { b:"b-cm", n:"ECT", d:"2024-06", v:"ICLR 2025", t:"scratch", dom:["图像"], url:"https://arxiv.org/abs/2406.14548", idea:"从预训练扩散模型出发逐步收紧一致性条件，大幅降低训练成本。" },
+  { b:"b-cm", n:"FACM", d:"2025-07", v:"arXiv", t:"distill", dom:["图像"], url:"https://arxiv.org/abs/2507.03738", idea:"用 flow matching 损失锚定 CM 训练。", m:"1-NFE FID 1.76（蒸馏 LightningDiT）" },
+  { b:"b-cm", n:"rCM", d:"2025-10", v:"ICLR 2026", t:"distill", dom:["视频","图像"], url:"https://arxiv.org/abs/2510.08431", idea:"sCM + score 蒸馏正则，前向/反向散度互补；自研 JVP 注意力核，扩到 14B 视频。", m:"1–4 步，加速 15–50×" },
+  { b:"b-cm", n:"DE-CM", d:"2026-02", v:"arXiv", t:"mixed", dom:["图像"], url:"https://arxiv.org/abs/2602.10764", idea:"Dual-End Consistency Model，改进 CM 类一步方法。", m:"1-NFE FID 1.70" },
+
+  // 分支 2
+  { b:"b-flowmap", n:"Flow Map Matching", d:"2024-06", v:"arXiv", t:"mixed", dom:["图像"], url:"https://arxiv.org/abs/2406.07507", idea:"把少步生成表述为学习双时间 flow map。" },
+  { b:"b-flowmap", n:"Shortcut Models", d:"2024-10", v:"ICLR 2025", t:"scratch", dom:["图像"], url:"https://arxiv.org/abs/2410.12557", idea:"把步长作为条件，用\"两步小跳 = 一步大跳\"自洽训练。" },
+  { b:"b-flowmap", n:"MeanFlow", d:"2025-05", v:"NeurIPS 2025", t:"scratch", dom:["图像"], url:"https://arxiv.org/abs/2505.13447", idea:"平均速度恒等式，从头训练一步模型。", m:"1-NFE FID 3.43" },
+  { b:"b-flowmap", n:"How to build a CM（自蒸馏）", d:"2025-05", v:"arXiv", t:"scratch", dom:["图像"], url:"https://arxiv.org/abs/2505.18825", idea:"Eulerian / Lagrangian / Progressive 三类自蒸馏目标，统一 CTM、Shortcut 等。" },
+  { b:"b-flowmap", n:"Align Your Flow", d:"2025-06", v:"NeurIPS 2025", t:"distill", dom:["图像"], url:"https://arxiv.org/abs/2506.14603", idea:"连续时间 flow map 蒸馏，多步时质量不退化。" },
+  { b:"b-flowmap", n:"TVM", d:"2025-11", v:"ICLR 2026", t:"scratch", dom:["图像"], url:"https://arxiv.org/abs/2511.19797", idea:"在轨迹终点而非起点匹配速度；给出 W2 上界；修改 DiT 以满足 Lipschitz。", m:"1-NFE 3.29 · 4-NFE 1.99" },
+  { b:"b-flowmap", n:"ESC", d:"2025-12", v:"arXiv", t:"scratch", dom:["图像"], url:"https://arxiv.org/abs/2512.11831", idea:"系统研究 shortcut 类一步扩散的设计空间。", m:"1-NFE FID 2.53（480 epoch）" },
+  { b:"b-flowmap", n:"SoFlow", d:"2025-12", v:"arXiv", t:"scratch", dom:["图像"], url:"https://arxiv.org/abs/2512.15657", idea:"Solution Flow Models，直接学习 ODE 解映射。" },
+  { b:"b-flowmap", n:"pMF（像素 MeanFlow）", d:"2026-01", v:"arXiv", t:"scratch", dom:["图像"], url:"https://arxiv.org/abs/2601.22158", idea:"网络输出干净图像、损失在速度空间计算，实现无潜空间一步生成。", m:"像素 1-NFE FID 2.22" },
+  { b:"b-flowmap", n:"iMF", d:"2026", v:"CVPR 2026", t:"scratch", dom:["图像"], url:"https://cvpr.thecvf.com/virtual/2026/poster/37834", idea:"改写为速度预测，并把引导强度作为条件输入。", m:"118M 模型 FID 2.74；XL 1.72（二手）" },
+  { b:"b-flowmap", n:"Temporal Equilibrium MeanFlow", d:"2026", v:"CVPR 2026", t:"scratch", dom:["图像"], url:"https://openaccess.thecvf.com/content/CVPR2026/papers/Tu_Temporal_Equilibrium_MeanFlow_Bridging_the_Scale_Gap_for_One-Step_Generation_CVPR_2026_paper.pdf", idea:"平衡不同时间尺度上的训练信号。", m:"1-NFE 2.62 · 2-NFE 2.30" },
+  { b:"b-flowmap", n:"Euler Mean Flows", d:"2026-02", v:"arXiv", t:"scratch", dom:["图像"], url:"https://arxiv.org/abs/2602.02571", idea:"研究如何强制轨迹一致性，边界条件易监督、轨迹一致难。" },
+  { b:"b-flowmap", n:"OT-NFM", d:"2026-04", v:"arXiv", t:"scratch", dom:["图像"], url:"https://arxiv.org/abs/2604.06413", idea:"用神经流参数化 flow map，加 OT 耦合，无需 ODE 积分。" },
+  { b:"b-flowmap", n:"Cumulative Flow Maps", d:"2026-05", v:"arXiv", t:"scratch", dom:["图像"], url:"https://arxiv.org/abs/2605.03623", idea:"把 MeanFlow 推广到 x-预测、EDM、DDIM 等参数化。" },
+  { b:"b-flowmap", n:"MeanFlow 方差削减", d:"2026-05", v:"arXiv", t:"scratch", dom:["图像"], url:"https://arxiv.org/abs/2605.09235", idea:"分析并降低 MeanFlow 训练目标的方差。" },
+
+  // 分支 3
+  { b:"b-dmd", n:"DMD", d:"2023-11", v:"CVPR 2024", t:"distill", dom:["图像"], url:"https://arxiv.org/abs/2311.18828", idea:"real/fake 两个 score 之差作为一步生成器的梯度。" },
+  { b:"b-dmd", n:"DMD2", d:"2024-05", v:"NeurIPS 2024", t:"distill", dom:["图像"], url:"https://arxiv.org/abs/2405.14867", idea:"去掉回归损失、加入 GAN 项，支持多步学生。" },
+  { b:"b-dmd", n:"Decoupled DMD", d:"2025-11", v:"arXiv", t:"distill", dom:["图像"], url:"https://arxiv.org/abs/2511.22677", idea:"认为 CFG 增强才是少步转换的主因，分布匹配主要起稳定作用。" },
+  { b:"b-dmd", n:"DMDR", d:"2025-11", v:"arXiv", t:"distill", dom:["图像","对齐"], url:"https://arxiv.org/abs/2511.13649", idea:"DMD 与强化学习结合，少步学生超过多步老师。" },
+  { b:"b-dmd", n:"Adaptive Matching Distillation", d:"2026-02", v:"arXiv", t:"distill", dom:["图像"], url:"https://arxiv.org/abs/2602.07345", idea:"自适应的匹配蒸馏目标。" },
+  { b:"b-dmd", n:"R_dm", d:"2026-03", v:"arXiv", t:"distill", dom:["图像","对齐"], url:"https://arxiv.org/abs/2603.28460", idea:"把分布匹配重新理解为一种奖励。" },
+  { b:"b-dmd", n:"AdvDMD", d:"2026-04", v:"arXiv", t:"distill", dom:["图像","对齐"], url:"https://arxiv.org/abs/2604.28126", idea:"对抗奖励与 DMD 结合。" },
+  { b:"b-dmd", n:"Data-Forcing Distillation", d:"2026-06", v:"arXiv", t:"distill", dom:["视频"], url:"https://arxiv.org/abs/2606.18478", idea:"针对 reverse KL 的多样性下降和过饱和，用一行代码级的后训练修正。" },
+  { b:"b-dmd", n:"DyMD", d:"2026-09", v:"arXiv", t:"distill", dom:["视频"], url:"https://arxiv.org/abs/2609.31349", idea:"面向视频世界模型，14B 老师蒸馏到 1.3B 四步学生，保留交互动力学。" },
+
+  // 分支 4
+  { b:"b-adv", n:"APT", d:"2025-01", v:"arXiv", t:"mixed", dom:["视频"], url:"https://arxiv.org/abs/2501.08316", idea:"以扩散模型为初始化，直接对真实数据做对抗后训练，实时一步生成 720p 视频。" },
+  { b:"b-adv", n:"SeedVR2", d:"2025-06", v:"arXiv", t:"mixed", dom:["视频"], url:"https://arxiv.org/abs/2506.05301", idea:"把 APT 用到一步视频修复。" },
+  { b:"b-adv", n:"Adversarial Flow Models", d:"2025-11", v:"ICML 2026", t:"scratch", dom:["图像"], url:"https://arxiv.org/abs/2511.22475", idea:"生成器学 flow matching 的确定性 OT 映射，用对抗目标从头训练。", m:"1-NFE FID 3.98（无引导，二手）" },
+  { b:"b-adv", n:"NextGAN", d:"2026-11", v:"arXiv", t:"mixed", dom:["图像","视频"], url:"https://arxiv.org/abs/2611.06270", idea:"直接规定生成器梯度而非判别器取值；单个模型支持 1/2/4 步。" },
+
+  // 分支 5
+  { b:"b-dist", n:"Towards One-Step w/o Distillation", d:"2025-02", v:"arXiv", t:"scratch", dom:["图像"], url:"https://arxiv.org/abs/2502.08005", idea:"较早系统讨论不蒸馏能否训练一步扩散模型。" },
+  { b:"b-dist", n:"IMM", d:"2025-03", v:"ICML 2025", t:"scratch", dom:["图像"], url:"https://arxiv.org/abs/2503.07565", idea:"用 MMD 做归纳式矩匹配，证明 CM 是单粒子一阶矩特例。", m:"8-NFE FID 1.99" },
+  { b:"b-dist", n:"Drifting Models", d:"2026-02", v:"NeurIPS 2026 Oral", t:"scratch", dom:["图像"], url:"https://arxiv.org/abs/2602.04770", idea:"训练过程中让推前分布\"漂移\"到数据分布，天然支持一步推理。", m:"1-NFE 1.54（潜空间）· 1.61（像素）" },
+  { b:"b-dist", n:"W-Flow", d:"2026-05", v:"arXiv", t:"scratch", dom:["图像"], url:"https://arxiv.org/abs/2605.11755", idea:"Sinkhorn 散度的 Wasserstein 梯度流，再把演化压缩进一步生成器。", m:"1-NFE FID 1.29（XL）" },
+  { b:"b-dist", n:"Priming Models", d:"2026-10", v:"arXiv", t:"scratch", dom:["图像","视频"], url:"https://arxiv.org/abs/2610.20331", idea:"先做固定噪声水平重建，再做分布后训练；不需要老师也不需要 flow map。", m:"1-NFE FID 1.19（二手）" },
+
+  // 分支 6
+  { b:"b-reflow", n:"Rectified Flow", d:"2022-09", v:"ICLR 2023", t:"distill", dom:["图像"], url:"https://arxiv.org/abs/2209.03003", idea:"通过重新耦合拉直轨迹。" },
+  { b:"b-reflow", n:"InstaFlow", d:"2023-09", v:"ICLR 2024", t:"distill", dom:["图像"], url:"https://arxiv.org/abs/2309.06380", idea:"ReFlow 用于文生图一步生成。" },
+  { b:"b-reflow", n:"Improving the Training of RF", d:"2024-05", v:"NeurIPS 2024", t:"distill", dom:["图像"], url:"https://arxiv.org/abs/2405.20320", idea:"改进 ReFlow 的训练技巧，一轮 ReFlow 即可接近多轮效果。" },
+
+  // 扩展：语言 / 对齐 / 条件
+  { b:"ext", n:"FMLM", d:"2026-02", v:"arXiv", t:"distill", dom:["语言"], url:"https://arxiv.org/abs/2602.16813", idea:"连续空间的流语言模型蒸馏成 flow map，一步质量超过离散扩散 8 步。" },
+  { b:"ext", n:"DiDi-Instruct", d:"2025-09", v:"ICLR 2026", t:"distill", dom:["语言"], url:"https://arxiv.org/abs/2509.25035", idea:"把分布匹配蒸馏用到掩码扩散语言模型，最高 64× 加速。" },
+  { b:"ext", n:"T3D", d:"2026-02", v:"arXiv", t:"distill", dom:["语言"], url:"https://arxiv.org/abs/2602.12262", idea:"轨迹自蒸馏 + 直接判别优化，改善扩散语言模型少步解码。" },
+  { b:"ext", n:"Coupling Models", d:"2026-05", v:"arXiv", t:"scratch", dom:["语言"], url:"https://arxiv.org/abs/2605.07193", idea:"离散数据的一步生成。" },
+  { b:"ext", n:"Meta Flow Maps", d:"2026-01", v:"arXiv", t:"mixed", dom:["对齐"], url:"https://arxiv.org/abs/2601.14430", idea:"利用 flow map 做可扩展的奖励对齐。" },
+  { b:"ext", n:"Variational Flow Maps", d:"2026-03", v:"arXiv", t:"mixed", dom:["图像","对齐"], url:"https://arxiv.org/abs/2603.07276", idea:"指出 flow map 的 guidance gap，引入噪声实现一步条件生成。" },
+  { b:"ext", n:"Flow-Map GRPO", d:"2026-07", v:"arXiv", t:"mixed", dom:["对齐"], url:"https://arxiv.org/abs/2607.00535", idea:"用锚定随机组合给少步 flow map 引入探索，做 GRPO。" }
+];
+
+const EXT = { id:"ext", code:"扩展", name:"跨模态与后训练", train:"mixed",
+  core:"同一套少步思想，搬到离散 token、奖励对齐和条件生成",
+  idea:"少步方法正在走出 ImageNet：语言模型上有连续 flow map 与离散一步映射两条路线；对齐方面，难点是一步模型没有多步采样的随机性可供探索；条件生成方面，一步模型做不了采样时的 CFG 外推。",
+  learned:"DSB 和桥模型的视角对离散、条件生成都有帮助。",
+  open:["离散空间里 flow map 怎么定义", "一步模型的探索与奖励优化", "引导、逆问题在一步模型里的形式"] };
+
+const BOARD = [
+  { n:"Priming Models", s:"从头 · 二手", f:1.19, t:"scratch" },
+  { n:"W-Flow XL", s:"从头", f:1.29, t:"scratch" },
+  { n:"Drifting", s:"从头 · 潜空间", f:1.54, t:"scratch" },
+  { n:"Drifting", s:"从头 · 像素", f:1.61, t:"scratch" },
+  { n:"DE-CM", s:"一致性", f:1.70, t:"mixed" },
+  { n:"iMF XL", s:"从头 · 二手", f:1.72, t:"scratch" },
+  { n:"FACM", s:"蒸馏", f:1.76, t:"distill" },
+  { n:"pMF", s:"从头 · 像素", f:2.22, t:"scratch" },
+  { n:"ESC", s:"从头 · 480 ep", f:2.53, t:"scratch" },
+  { n:"TE-MeanFlow", s:"从头", f:2.62, t:"scratch" },
+  { n:"TVM", s:"从头", f:3.29, t:"scratch" },
+  { n:"MeanFlow", s:"从头 · 2025", f:3.43, t:"scratch" },
+  { n:"AFM XL", s:"从头 · 无引导", f:3.98, t:"scratch" }
+];
+
+const TRAIN_LABEL = { scratch:"从头训练", distill:"需要老师", mixed:"两者都有" };
+const state = { train:"all", domain:"all", newOnly:false };
+
+function esc(s){ return s.replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c])); }
+
+function paperCard(p){
+  const isNew = p.d.startsWith("2026");
+  const tags = `<span class="tag ${p.t}">${TRAIN_LABEL[p.t]}</span>` + p.dom.map(d => `<span class="tag domain">${d}</span>`).join("");
+  return `<article class="paper${isNew ? " new" : ""}" data-t="${p.t}" data-dom="${p.dom.join(",")}" data-new="${isNew}">
+    <div class="p-top"><span class="p-name"><a href="${p.url}" target="_blank" rel="noopener">${esc(p.n)}</a></span><span class="p-date">${p.d} · ${esc(p.v)}</span></div>
+    <p class="p-idea">${esc(p.idea)}</p>
+    ${p.m ? `<span class="p-metric">${esc(p.m)}</span>` : ""}
+    <div class="p-tags">${tags}${isNew ? '<span class="new-badge">NEW</span>' : ""}</div>
+  </article>`;
+}
+
+function branchBlock(b){
+  const list = PAPERS.filter(p => p.b === b.id).sort((a, c) => a.d.localeCompare(c.d));
+  return `<div class="branch" id="${b.id}">
+    <div class="branch-side">
+      <span class="branch-code">${b.code} · ${list.length} 篇</span>
+      <h3>${b.name}</h3>
+      <span><span class="tag ${b.train}">${TRAIN_LABEL[b.train]}</span></span>
+    </div>
+    <div class="branch-main">
+      <div class="core">${b.core}</div>
+      <p>${b.idea}</p>
+      <p class="link-learned">${b.learned}</p>
+      <div><div class="sub-h">卡点</div><ul class="open-q">${b.open.map(o => `<li>${esc(o)}</li>`).join("")}</ul></div>
+      <div class="sub-h">代表工作</div>
+      <div class="papers">${list.map(paperCard).join("")}</div>
+      <p class="empty" hidden>当前筛选条件下这个分支没有论文。</p>
+    </div>
+  </div>`;
+}
+
+function renderBranches(){
+  document.getElementById("branchList").innerHTML = [...BRANCHES, EXT].map(branchBlock).join("");
+  document.getElementById("paperTotal").textContent = PAPERS.length;
+}
+
+function applyFilters(){
+  let shown = 0;
+  document.querySelectorAll(".branch").forEach(br => {
+    let local = 0;
+    br.querySelectorAll(".paper").forEach(card => {
+      const okT = state.train === "all" || card.dataset.t === state.train || card.dataset.t === "mixed";
+      const okD = state.domain === "all" || card.dataset.dom.split(",").includes(state.domain);
+      const okN = !state.newOnly || card.dataset.new === "true";
+      const ok = okT && okD && okN;
+      card.hidden = !ok;
+      if (ok) local++;
+    });
+    br.querySelector(".empty").hidden = local !== 0;
+    shown += local;
+  });
+  document.getElementById("fcount").textContent = `显示 ${shown} / ${PAPERS.length} 篇`;
+}
+
+function wireFilters(){
+  document.querySelectorAll(".fgroup[data-group]").forEach(g => {
+    g.addEventListener("click", e => {
+      const btn = e.target.closest(".chip"); if (!btn) return;
+      g.querySelectorAll(".chip").forEach(c => c.setAttribute("aria-pressed", String(c === btn)));
+      state[g.dataset.group] = btn.dataset.v;
+      applyFilters();
+    });
+  });
+  const nb = document.getElementById("f-new");
+  nb.addEventListener("click", () => {
+    state.newOnly = !state.newOnly;
+    nb.setAttribute("aria-pressed", String(state.newOnly));
+    applyFilters();
+  });
+}
+
+function renderBoard(){
+  const box = document.getElementById("boardBox");
+  const max = 4;
+  const rows = BOARD.map(r => `<div class="b-row">
+      <span class="b-name">${esc(r.n)}<small>${esc(r.s)}</small></span>
+      <div class="b-track"><div class="b-bar ${r.t}" style="width:${(r.f / max * 100).toFixed(2)}%"></div></div>
+      <span class="b-val">${r.f.toFixed(2)}</span>
+    </div>`).join("");
+  box.insertAdjacentHTML("afterbegin", rows);
+  box.insertAdjacentHTML("beforeend", `<div class="b-legend"><span class="tag scratch">从头训练</span><span class="tag distill">蒸馏</span><span class="tag mixed">未区分</span></div>`);
+}
+
+renderBranches();
+renderBoard();
+wireFilters();
+applyFilters();
+</script>
