@@ -252,6 +252,110 @@ html { scroll-behavior: smooth; }
 .d-nav button:disabled { opacity: 0.4; cursor: default; }
 body.drawer-open { overflow: hidden; }
 @media (max-width: 560px) { .d-head, .d-body { padding-left: 16px; padding-right: 16px; } }
+
+/* Learning dashboard */
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.me-sync { font-size: 12.5px; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; }
+.me-sync::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--muted); flex: none; }
+.me-sync.cloud::before { background: var(--scratch); }
+.me-sync.slow::before, .me-sync.error::before { background: var(--distill); }
+.me-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.me-card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.me-wide { grid-column: 1 / -1; }
+@media (max-width: 720px) { .me-grid { grid-template-columns: minmax(0, 1fr); } }
+.me-bar { display: flex; height: 10px; border-radius: 999px; background: var(--neutral-soft); overflow: hidden; }
+.me-seg { height: 100%; }
+.me-seg.reading, .me-dot.reading { background: var(--accent); }
+.me-seg.understood, .me-dot.understood { background: var(--scratch); }
+.me-seg.reproduced, .me-dot.reproduced { background: var(--distill); }
+.me-dot.unread { background: var(--line); }
+.me-stats { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; }
+.me-stat { display: inline-flex; align-items: center; gap: 6px; }
+.me-stat b { font-weight: 600; }
+.me-stat-label { color: var(--muted); }
+.me-dot { width: 8px; height: 8px; border-radius: 2px; }
+.me-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.me-chip { font: inherit; font-size: 13px; padding: 3px 10px; border-radius: 6px; cursor: pointer; border: 1px solid var(--accent); background: var(--accent-soft); color: var(--accent); }
+.me-empty { font-size: 13px; color: var(--muted); }
+.me-notes { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; }
+.me-note { font: inherit; text-align: left; cursor: pointer; border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 6px; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.me-note:hover { border-color: var(--accent); }
+.me-note-top { display: flex; gap: 8px; align-items: baseline; justify-content: space-between; font-size: 13.5px; }
+.me-q-flag { font-size: 11px; color: var(--distill); white-space: nowrap; }
+.me-note-text { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+.idea-form { display: flex; flex-direction: column; gap: 8px; }
+.idea-form textarea, .learn textarea { font: inherit; font-size: 14px; line-height: 1.6; width: 100%; resize: vertical; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+.idea-form-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.idea-form select { font: inherit; font-size: 13px; flex: 1; min-width: 0; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+.idea-add { font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; padding: 6px 14px; border-radius: 6px; border: 1px solid var(--ink); background: var(--ink); color: var(--bg); }
+.idea-list { display: flex; flex-direction: column; gap: 8px; }
+.idea { border-top: 1px solid var(--line); padding-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+.idea-meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 12px; color: var(--muted); }
+.idea-text { font-size: 14px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.idea-del { font: inherit; font-size: 12px; margin-left: auto; cursor: pointer; border: 0; background: none; color: var(--muted); padding: 2px 4px; }
+.idea-del.armed { color: var(--distill); font-weight: 600; }
+
+/* Card status */
+.p-right { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.p-status { font-size: 11.5px; padding: 1px 7px; border-radius: 4px; font-weight: 500; }
+.p-status.reading { background: var(--accent-soft); color: var(--accent); }
+.p-status.understood { background: var(--scratch-soft); color: var(--scratch); }
+.p-status.reproduced { background: var(--distill-soft); color: var(--distill); }
+.p-quiz { font-family: var(--f-mono); font-size: 11px; color: var(--muted); }
+.p-quiz.done { color: var(--scratch); }
+
+/* Drawer: learning panel + quiz */
+.learn { border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; background: var(--bg); }
+.learn-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.learn-label, .learn-field label { font-size: 12px; color: var(--muted); }
+.learn-field { display: flex; flex-direction: column; gap: 4px; }
+.learn-grid { display: flex; flex-direction: column; gap: 8px; }
+.learn textarea { background: var(--surface); }
+.learn-save { font-size: 11.5px; color: var(--muted); min-height: 1em; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+.seg-btn { font: inherit; font-size: 13px; padding: 4px 11px; cursor: pointer; border: 0; background: var(--surface); color: var(--ink); }
+.seg-btn + .seg-btn { border-left: 1px solid var(--line); }
+.seg-btn[aria-pressed="true"].unread { background: var(--ink); color: var(--bg); }
+.seg-btn[aria-pressed="true"].reading { background: var(--accent); color: var(--surface); }
+.seg-btn[aria-pressed="true"].understood { background: var(--scratch); color: var(--surface); }
+.seg-btn[aria-pressed="true"].reproduced { background: var(--distill); color: var(--surface); }
+.quiz .qa { border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+.qa-q { display: flex; gap: 10px; font-size: 14.5px; line-height: 1.75; }
+.qa-n { color: var(--accent); font-weight: 600; flex: none; }
+.qa-ctl { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.qa-show { font: inherit; font-size: 12.5px; cursor: pointer; padding: 3px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+.qa-done { font-size: 13px; color: var(--muted); display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+.qa-a { font-size: 14px; line-height: 1.8; padding: 10px 12px; background: var(--scratch-soft); border-radius: 6px; overflow-x: auto; }
+
+/* Lineage graph */
+.lg-box { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; overflow-x: auto; }
+.lg-box svg { display: block; }
+.lg-lane { fill: var(--surface); }
+.lg-lane.odd { fill: var(--bg); }
+.lg-lane-label { fill: var(--muted); font-family: var(--f-body); font-size: 12px; font-weight: 500; }
+.lg-year-line { stroke: var(--line); stroke-dasharray: 3 4; }
+.lg-year { fill: var(--muted); font-family: var(--f-mono); font-size: 11px; }
+.lg-edge { fill: none; stroke: var(--line); stroke-width: 1.3; }
+.lg-arrow { fill: var(--line); }
+.lg-arrow-hl { fill: var(--accent); }
+.lg-node { cursor: pointer; outline: none; }
+.lg-node rect { fill: var(--surface); stroke: var(--muted); stroke-width: 1; }
+.lg-node text { fill: var(--ink); font-family: var(--f-body); font-size: 12px; }
+.lg-node.st-reading rect { fill: var(--accent-soft); stroke: var(--accent); }
+.lg-node.st-understood rect { fill: var(--scratch-soft); stroke: var(--scratch); }
+.lg-node.st-reproduced rect { fill: var(--distill-soft); stroke: var(--distill); }
+.lg-node:focus-visible rect { stroke: var(--accent); stroke-width: 2.5; }
+svg.focus .lg-node { opacity: 0.25; }
+svg.focus .lg-node.hl { opacity: 1; }
+svg.focus .lg-node.self rect { stroke-width: 2.5; stroke: var(--accent); }
+svg.focus .lg-edge { opacity: 0.15; }
+svg.focus .lg-edge.hl { opacity: 1; stroke: var(--accent); stroke-width: 1.8; }
+.lg-legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12.5px; color: var(--muted); }
+.lg-key { display: inline-flex; align-items: center; gap: 6px; }
+.lg-key::before { content: ""; width: 14px; height: 10px; border-radius: 3px; border: 1px solid var(--muted); background: var(--surface); }
+.lg-key.reading::before { background: var(--accent-soft); border-color: var(--accent); }
+.lg-key.understood::before { background: var(--scratch-soft); border-color: var(--scratch); }
+.lg-key.reproduced::before { background: var(--distill-soft); border-color: var(--distill); }
 </style>
 
 <div class="wrap">
@@ -267,6 +371,42 @@ body.drawer-open { overflow: hidden; }
     <span>点开任意论文卡片可看详细解读</span>
   </div>
 </header>
+
+<section id="me">
+  <div class="sec-head">
+    <span class="eyebrow">我的学习</span>
+    <h2>进度、笔记与研究想法</h2>
+    <p class="me-sync" id="meSync">正在载入…</p>
+  </div>
+  <div class="me-grid">
+    <div class="me-card me-progress">
+      <span class="sub-h">阅读进度 · 共 49 篇</span>
+      <div class="me-bar" id="meBar" aria-hidden="true"></div>
+      <div class="me-stats" id="meStats"></div>
+    </div>
+    <div class="me-card">
+      <span class="sub-h">正在读</span>
+      <div class="me-chips" id="meReading"></div>
+    </div>
+    <div class="me-card me-wide">
+      <span class="sub-h">最近的笔记与疑问</span>
+      <div class="me-notes" id="meNotes"></div>
+    </div>
+    <div class="me-card me-wide">
+      <span class="sub-h">研究想法</span>
+      <form class="idea-form" id="ideaForm">
+        <label class="sr" for="ideaText">新的研究想法</label>
+        <textarea id="ideaText" rows="2" placeholder="例如：在 CIFAR-10 上对比 MeanFlow 与 Drifting 目标，在同一算力下看多步采样能力…"></textarea>
+        <div class="idea-form-row">
+          <label class="sr" for="ideaProb">关联的开放问题</label>
+          <select id="ideaProb"><option value="0">不关联开放问题</option></select>
+          <button class="idea-add" type="submit">记下来</button>
+        </div>
+      </form>
+      <div class="idea-list" id="ideaList"></div>
+    </div>
+  </div>
+</section>
 
 <section id="map">
   <div class="sec-head">
@@ -378,6 +518,18 @@ body.drawer-open { overflow: hidden; }
   </div>
 </section>
 
+<section id="lineage">
+  <div class="sec-head">
+    <span class="eyebrow">论文传承图</span>
+    <h2>谁继承了谁的想法</h2>
+    <p class="lede">横轴是时间，每条泳道是一个分支。鼠标移到论文上会高亮它的上游和下游，点击打开解读。节点颜色就是你的阅读状态。连线是整理者根据论文内容归纳的思想传承，不等于引用关系。</p>
+  </div>
+  <div class="lg-box"><svg id="lineageSvg" role="img" aria-label="少步生成论文的传承关系图"></svg></div>
+  <div class="lg-legend">
+    <span class="lg-key unread">未读</span><span class="lg-key reading">在读</span><span class="lg-key understood">读懂</span><span class="lg-key reproduced">已复现</span>
+  </div>
+</section>
+
 <section id="branches">
   <div class="sec-head">
     <span class="eyebrow">六个分支</span>
@@ -399,6 +551,14 @@ body.drawer-open { overflow: hidden; }
       <button class="chip" type="button" id="f-dom-vid" data-v="视频" aria-pressed="false">视频</button>
       <button class="chip" type="button" id="f-dom-lang" data-v="语言" aria-pressed="false">语言/离散</button>
       <button class="chip" type="button" id="f-dom-rl" data-v="对齐" aria-pressed="false">对齐/RL</button>
+    </div>
+    <div class="fgroup" data-group="status">
+      <span class="flabel">我的状态</span>
+      <button class="chip" type="button" id="f-st-all" data-v="all" aria-pressed="true">全部</button>
+      <button class="chip" type="button" id="f-st-unread" data-v="unread" aria-pressed="false">未读</button>
+      <button class="chip" type="button" id="f-st-reading" data-v="reading" aria-pressed="false">在读</button>
+      <button class="chip" type="button" id="f-st-understood" data-v="understood" aria-pressed="false">读懂</button>
+      <button class="chip" type="button" id="f-st-reproduced" data-v="reproduced" aria-pressed="false">已复现</button>
     </div>
     <div class="fgroup">
       <button class="chip" type="button" id="f-new" data-v="new" aria-pressed="false">只看 2026</button>
@@ -547,6 +707,7 @@ window.MathJax = {
 </script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-svg.js" async></script>
 <script src="paper_details.js"></script>
+<script src="paper_quiz.js"></script>
 <script>
 const BRANCHES = [
   {
@@ -683,20 +844,24 @@ const BOARD = [
 ];
 
 const TRAIN_LABEL = { scratch:"从头训练", distill:"需要老师", mixed:"两者都有" };
-const state = { train:"all", domain:"all", newOnly:false };
+const state = { train:"all", domain:"all", status:"all", newOnly:false };
 
 function esc(s){ return s.replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c])); }
 
 function paperCard(p){
   const isNew = p.d.startsWith("2026");
   const tags = `<span class="tag ${p.t}">${TRAIN_LABEL[p.t]}</span>` + p.dom.map(d => `<span class="tag domain">${d}</span>`).join("");
-  return `<article class="paper${isNew ? " new" : ""}" data-t="${p.t}" data-dom="${p.dom.join(",")}" data-new="${isNew}">
+  return `<article class="paper${isNew ? " new" : ""}" data-k="${p.k}" data-t="${p.t}" data-dom="${p.dom.join(",")}" data-new="${isNew}">
     <div class="p-top"><span class="p-name"><a href="${p.url}" target="_blank" rel="noopener">${esc(p.n)}</a></span><span class="p-date">${p.d} · ${esc(p.v)}</span></div>
     <p class="p-idea">${esc(p.idea)}</p>
     ${p.m ? `<span class="p-metric">${esc(p.m)}</span>` : ""}
     <div class="p-actions">
       <div class="p-tags">${tags}${isNew ? '<span class="new-badge">NEW</span>' : ""}</div>
-      ${DETAILS[p.k] ? `<button class="read-btn" type="button" data-k="${p.k}">读解读 →</button>` : ""}
+      <div class="p-right">
+        <span class="p-status" data-status-for="${p.k}" hidden></span>
+        ${(window.PAPER_QUIZ || {})[p.k] ? `<span class="p-quiz" data-quiz-for="${p.k}"></span>` : ""}
+        ${DETAILS[p.k] ? `<button class="read-btn" type="button" data-k="${p.k}">读解读 →</button>` : ""}
+      </div>
     </div>
   </article>`;
 }
@@ -729,6 +894,7 @@ function detailHTML(p, d){
   const prev = ORDER[i - 1], next = ORDER[i + 1];
   return `
     <p class="d-tldr">${d.tldr}</p>
+    <div id="dLearn"></div>
     ${sec("问题动机", para(d.motivation))}
     ${sec("核心方法", para(d.method))}
     ${sec("训练算法（伪代码）", algo)}
@@ -736,6 +902,7 @@ function detailHTML(p, d){
     ${sec("实验结果", table)}
     ${sec("局限", para(d.limits))}
     ${sec("与其他工作的关系", para(d.relations))}
+    <div id="dQuiz"></div>
     <div class="d-nav">
       <button type="button" data-k="${prev ? prev.k : ""}" ${prev ? "" : "disabled"}>← ${prev ? esc(prev.n) : "没有了"}</button>
       <button type="button" data-k="${next ? next.k : ""}" ${next ? "" : "disabled"}>${next ? esc(next.n) : "没有了"} →</button>
@@ -765,6 +932,7 @@ function openPaper(k, fromHash){
     `<span class="d-src ${d.src}">${srcLabel}</span><a href="${p.url}" target="_blank" rel="noopener">原文 ↗</a>`;
   const body = document.getElementById("dBody");
   body.innerHTML = detailHTML(p, d);
+  if (window.onPaperOpen) window.onPaperOpen(k, body);
   body.scrollTop = 0;
   document.getElementById("drawer").hidden = false;
   document.getElementById("scrim").hidden = false;
@@ -778,6 +946,7 @@ function openPaper(k, fromHash){
 function closePaper(){
   if (!current) return;
   current = null;
+  if (window.onPaperClose) window.onPaperClose();
   document.getElementById("drawer").hidden = true;
   document.getElementById("scrim").hidden = true;
   document.body.classList.remove("drawer-open");
@@ -837,7 +1006,8 @@ function applyFilters(){
       const okT = state.train === "all" || card.dataset.t === state.train || card.dataset.t === "mixed";
       const okD = state.domain === "all" || card.dataset.dom.split(",").includes(state.domain);
       const okN = !state.newOnly || card.dataset.new === "true";
-      const ok = okT && okD && okN;
+      const okS = state.status === "all" || (window.statusOf ? window.statusOf(card.dataset.k) : "unread") === state.status;
+      const ok = okT && okD && okN && okS;
       card.hidden = !ok;
       if (ok) local++;
     });
@@ -883,3 +1053,5 @@ wireFilters();
 applyFilters();
 wireDrawer();
 </script>
+<script src="learning.js"></script>
+<script>if (current && window.onPaperOpen) openPaper(current, true);</script>
