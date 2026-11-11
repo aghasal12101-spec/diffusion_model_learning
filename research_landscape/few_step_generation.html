@@ -36,6 +36,7 @@
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 body {
   background: var(--bg); color: var(--ink);
   font-family: var(--f-body); font-size: 15px; line-height: 1.75;
@@ -197,6 +198,60 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 footer { font-size: 12.5px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 18px; display: flex; flex-direction: column; gap: 6px; }
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
 html { scroll-behavior: smooth; }
+
+/* Paper card: explainer button */
+.p-actions { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.read-btn {
+  font: inherit; font-size: 12.5px; font-weight: 500; cursor: pointer;
+  padding: 3px 10px; border-radius: 6px; border: 1px solid var(--accent);
+  background: var(--accent-soft); color: var(--accent); white-space: nowrap;
+}
+.read-btn:hover { background: var(--accent); color: var(--surface); }
+
+/* Explainer drawer */
+.scrim { position: fixed; inset: 0; background: rgba(10, 14, 22, 0.42); z-index: 30; }
+.drawer {
+  position: fixed; top: 0; right: 0; bottom: 0; z-index: 31;
+  width: min(760px, 100%); background: var(--surface); border-left: 1px solid var(--line);
+  display: flex; flex-direction: column; box-shadow: -12px 0 40px rgba(0,0,0,0.18);
+  padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+.d-head {
+  display: flex; align-items: flex-start; gap: 12px; padding: 18px 22px 14px;
+  border-bottom: 1px solid var(--line);
+}
+.d-head-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.d-title { font-family: var(--f-display); font-size: 22px; font-weight: 900; line-height: 1.3; margin: 0; overflow-wrap: anywhere; }
+.d-meta { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font-size: 12.5px; color: var(--muted); }
+.d-close {
+  font: inherit; font-size: 20px; line-height: 1; cursor: pointer; flex: none;
+  width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--line);
+  background: var(--bg); color: var(--ink);
+}
+.d-body { overflow-y: auto; padding: 18px 22px 40px; display: flex; flex-direction: column; gap: 22px; overscroll-behavior: contain; }
+.d-tldr { font-size: 15px; line-height: 1.8; padding: 14px 16px; background: var(--accent-soft); border-radius: 8px; }
+.d-sec { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.d-sec h4 { margin: 0; font-family: var(--f-mono); font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+.d-sec p, .d-sec li { font-size: 14.5px; line-height: 1.8; }
+.d-sec ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
+.d-sec mjx-container[display="true"] { overflow-x: auto; overflow-y: hidden; max-width: 100%; padding: 4px 0; }
+.d-algo { margin: 0; font-family: var(--f-mono); font-size: 12.5px; line-height: 1.75; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; overflow-x: auto; white-space: pre; }
+.d-table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 6px; }
+.d-table { border-collapse: collapse; width: 100%; font-size: 13px; }
+.d-table th, .d-table td { padding: 7px 10px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+.d-table th { background: var(--bg); font-weight: 500; color: var(--muted); white-space: nowrap; }
+.d-table tr:last-child td { border-bottom: 0; }
+.d-table td { font-variant-numeric: tabular-nums; }
+.d-note { font-size: 13px; color: var(--muted); }
+.d-src { font-size: 12px; padding: 1px 8px; border-radius: 999px; }
+.d-src.full { background: var(--scratch-soft); color: var(--scratch); }
+.d-src.known { background: var(--distill-soft); color: var(--distill); }
+.d-nav { display: flex; justify-content: space-between; gap: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+.d-nav button { font: inherit; font-size: 13px; cursor: pointer; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); max-width: 48%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.d-nav button:disabled { opacity: 0.4; cursor: default; }
+body.drawer-open { overflow: hidden; }
+@media (max-width: 560px) { .d-head, .d-body { padding-left: 16px; padding-right: 16px; } }
 </style>
 
 <div class="wrap">
@@ -209,7 +264,7 @@ html { scroll-behavior: smooth; }
   <div class="hero-meta">
     <span>检索截至 <b class="mono">2026-11-11</b></span>
     <span>收录 <b class="mono" id="paperTotal">—</b> 篇代表工作</span>
-    <span>数字多来自论文摘要或二手摘要，引用前请核对原文</span>
+    <span>点开任意论文卡片可看详细解读</span>
   </div>
 </header>
 
@@ -363,7 +418,7 @@ html { scroll-behavior: smooth; }
   <div class="board" id="boardBox">
     <div class="b-axis"><span></span><div class="b-ticks"><span>0</span><span>1</span><span>2</span><span>3</span><span>4</span></div><span></span></div>
   </div>
-  <p class="caveat">这些数字不能直接横向比较：训练轮数、模型大小、是否用 CFG、潜空间还是像素空间、FID 采样数都不同。标"二手"的数字来自第三方摘要表，没有对照原文核实。作为参照，多步模型（如 SiT/DiT + REPA）大约在 1.4 左右。</p>
+  <p class="caveat">这些数字不能直接横向比较：训练轮数、模型大小、是否用 CFG、潜空间还是像素空间、FID 采样数都不同。表中数字均已对照原文核实；NextGAN 在对抗形式下可到 1.36。作为参照，多步模型（如 SiT/DiT + REPA）大约在 1.4 左右。</p>
 </section>
 
 <section id="problems">
@@ -382,7 +437,7 @@ html { scroll-behavior: smooth; }
     <div class="prob">
       <span class="prob-n mono">2</span>
       <div><h3>从头训练的一步模型能否扩展到文生图和视频？<span class="heat">热度 ●●●</span></h3>
-      <p>ImageNet 上从头训练已经追平甚至超过多步模型，但工业界的大模型仍几乎都靠 DMD / rCM / APT 蒸馏。W-Flow 把文生图列为未来工作，Priming 报告了 GenEval 0.82（二手），但还没有大规模验证。</p></div>
+      <p>ImageNet 上从头训练已经追平甚至超过多步模型，但工业界的大模型仍几乎都靠 DMD / rCM / APT 蒸馏。W-Flow 把文生图列为未来工作，Priming 只在较小的像素空间文生图（MiniT2I）上做了验证，还没有大规模结果。</p></div>
       <p class="entry"><b>切入点：</b>小规模文生图（如 CC3M 级数据）上验证分布层面方法的条件生成与 CFG 行为。</p>
     </div>
     <div class="prob">
@@ -464,12 +519,34 @@ html { scroll-behavior: smooth; }
 </section>
 
 <footer>
-  <span>整理日期 2026-11-11。论文信息来自 arXiv、会议页面与第三方摘要，未逐篇精读，数字和归类以原文为准。</span>
-  <span>标注"二手"的成绩来自第三方表格；带 2026 标签的部分工作尚未经过同行评审。</span>
+  <span>整理日期 2026-11-11。论文解读依据 arXiv / CVPR 原文整理；少数经典工作依据整理者对原文的熟悉程度撰写，已在解读中标注。</span>
+  <span>带 2026 标签的部分工作尚未经过同行评审。</span>
 </footer>
 
 </div>
 
+<div class="scrim" id="scrim" hidden></div>
+<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="dTitle" hidden>
+  <div class="d-head">
+    <div class="d-head-main">
+      <span class="eyebrow" id="dBranch"></span>
+      <h2 class="d-title" id="dTitle"></h2>
+      <div class="d-meta" id="dMeta"></div>
+    </div>
+    <button class="d-close" id="dClose" type="button" aria-label="关闭解读">×</button>
+  </div>
+  <div class="d-body" id="dBody"></div>
+</aside>
+
+<script>
+window.MathJax = {
+  tex: { inlineMath: [["$", "$"]], displayMath: [["$$", "$$"]] },
+  svg: { fontCache: "global" },
+  startup: { typeset: false }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-svg.js" async></script>
+<script src="paper_details.js"></script>
 <script>
 const BRANCHES = [
   {
@@ -518,67 +595,67 @@ const BRANCHES = [
 
 const PAPERS = [
   // 分支 1
-  { b:"b-cm", n:"Consistency Models", d:"2023-03", v:"ICML 2023", t:"mixed", dom:["图像"], url:"https://arxiv.org/abs/2303.01469", idea:"提出自洽性约束，CD 与 CT 两种训练方式。" },
-  { b:"b-cm", n:"sCM", d:"2024-10", v:"ICLR 2025", t:"mixed", dom:["图像"], url:"https://arxiv.org/abs/2410.11081", idea:"连续时间 CM，统一参数化并解决训练不稳定，扩展到 1.5B。" },
-  { b:"b-cm", n:"ECT", d:"2024-06", v:"ICLR 2025", t:"scratch", dom:["图像"], url:"https://arxiv.org/abs/2406.14548", idea:"从预训练扩散模型出发逐步收紧一致性条件，大幅降低训练成本。" },
-  { b:"b-cm", n:"FACM", d:"2025-07", v:"arXiv", t:"distill", dom:["图像"], url:"https://arxiv.org/abs/2507.03738", idea:"用 flow matching 损失锚定 CM 训练。", m:"1-NFE FID 1.76（蒸馏 LightningDiT）" },
-  { b:"b-cm", n:"rCM", d:"2025-10", v:"ICLR 2026", t:"distill", dom:["视频","图像"], url:"https://arxiv.org/abs/2510.08431", idea:"sCM + score 蒸馏正则，前向/反向散度互补；自研 JVP 注意力核，扩到 14B 视频。", m:"1–4 步，加速 15–50×" },
-  { b:"b-cm", n:"DE-CM", d:"2026-02", v:"arXiv", t:"mixed", dom:["图像"], url:"https://arxiv.org/abs/2602.10764", idea:"Dual-End Consistency Model，改进 CM 类一步方法。", m:"1-NFE FID 1.70" },
+  { b:"b-cm", k:"cm", n:"Consistency Models", d:"2023-03", v:"ICML 2023", t:"mixed", dom:["图像"], url:"https://arxiv.org/abs/2303.01469", idea:"提出自洽性约束，CD 与 CT 两种训练方式。" },
+  { b:"b-cm", k:"scm", n:"sCM", d:"2024-10", v:"ICLR 2025", t:"mixed", dom:["图像"], url:"https://arxiv.org/abs/2410.11081", idea:"连续时间 CM，统一参数化并解决训练不稳定，扩展到 1.5B。" },
+  { b:"b-cm", k:"ect", n:"ECT", d:"2024-06", v:"ICLR 2025", t:"scratch", dom:["图像"], url:"https://arxiv.org/abs/2406.14548", idea:"从预训练扩散模型出发逐步收紧一致性条件，大幅降低训练成本。" },
+  { b:"b-cm", k:"facm", n:"FACM", d:"2025-07", v:"arXiv", t:"distill", dom:["图像"], url:"https://arxiv.org/abs/2507.03738", idea:"把 flow matching 作为锚与连续时间 CM 目标联合训练，防止遗忘瞬时速度；扩展到 14B。", m:"1-NFE 1.70 · 2-NFE 1.32（蒸馏 LightningDiT）" },
+  { b:"b-cm", k:"rcm", n:"rCM", d:"2025-10", v:"ICLR 2026", t:"distill", dom:["视频","图像"], url:"https://arxiv.org/abs/2510.08431", idea:"sCM + score 蒸馏正则，前向/反向散度互补；自研 JVP 注意力核，扩到 14B 视频。", m:"1–4 步，加速 15–50×" },
+  { b:"b-cm", k:"decm", n:"DE-CM", d:"2026-02", v:"arXiv", t:"distill", dom:["图像"], url:"https://arxiv.org/abs/2602.10764", idea:"只优化三类关键子轨迹：一致性、瞬时（FM 正则）、噪声到带噪点映射。", m:"1-NFE 1.70 · 2-NFE 1.33（蒸馏）" },
 
   // 分支 2
-  { b:"b-flowmap", n:"Flow Map Matching", d:"2024-06", v:"arXiv", t:"mixed", dom:["图像"], url:"https://arxiv.org/abs/2406.07507", idea:"把少步生成表述为学习双时间 flow map。" },
-  { b:"b-flowmap", n:"Shortcut Models", d:"2024-10", v:"ICLR 2025", t:"scratch", dom:["图像"], url:"https://arxiv.org/abs/2410.12557", idea:"把步长作为条件，用\"两步小跳 = 一步大跳\"自洽训练。" },
-  { b:"b-flowmap", n:"MeanFlow", d:"2025-05", v:"NeurIPS 2025", t:"scratch", dom:["图像"], url:"https://arxiv.org/abs/2505.13447", idea:"平均速度恒等式，从头训练一步模型。", m:"1-NFE FID 3.43" },
-  { b:"b-flowmap", n:"How to build a CM（自蒸馏）", d:"2025-05", v:"arXiv", t:"scratch", dom:["图像"], url:"https://arxiv.org/abs/2505.18825", idea:"Eulerian / Lagrangian / Progressive 三类自蒸馏目标，统一 CTM、Shortcut 等。" },
-  { b:"b-flowmap", n:"Align Your Flow", d:"2025-06", v:"NeurIPS 2025", t:"distill", dom:["图像"], url:"https://arxiv.org/abs/2506.14603", idea:"连续时间 flow map 蒸馏，多步时质量不退化。" },
-  { b:"b-flowmap", n:"TVM", d:"2025-11", v:"ICLR 2026", t:"scratch", dom:["图像"], url:"https://arxiv.org/abs/2511.19797", idea:"在轨迹终点而非起点匹配速度；给出 W2 上界；修改 DiT 以满足 Lipschitz。", m:"1-NFE 3.29 · 4-NFE 1.99" },
-  { b:"b-flowmap", n:"ESC", d:"2025-12", v:"arXiv", t:"scratch", dom:["图像"], url:"https://arxiv.org/abs/2512.11831", idea:"系统研究 shortcut 类一步扩散的设计空间。", m:"1-NFE FID 2.53（480 epoch）" },
-  { b:"b-flowmap", n:"SoFlow", d:"2025-12", v:"arXiv", t:"scratch", dom:["图像"], url:"https://arxiv.org/abs/2512.15657", idea:"Solution Flow Models，直接学习 ODE 解映射。" },
-  { b:"b-flowmap", n:"pMF（像素 MeanFlow）", d:"2026-01", v:"arXiv", t:"scratch", dom:["图像"], url:"https://arxiv.org/abs/2601.22158", idea:"网络输出干净图像、损失在速度空间计算，实现无潜空间一步生成。", m:"像素 1-NFE FID 2.22" },
-  { b:"b-flowmap", n:"iMF", d:"2026", v:"CVPR 2026", t:"scratch", dom:["图像"], url:"https://cvpr.thecvf.com/virtual/2026/poster/37834", idea:"改写为速度预测，并把引导强度作为条件输入。", m:"118M 模型 FID 2.74；XL 1.72（二手）" },
-  { b:"b-flowmap", n:"Temporal Equilibrium MeanFlow", d:"2026", v:"CVPR 2026", t:"scratch", dom:["图像"], url:"https://openaccess.thecvf.com/content/CVPR2026/papers/Tu_Temporal_Equilibrium_MeanFlow_Bridging_the_Scale_Gap_for_One-Step_Generation_CVPR_2026_paper.pdf", idea:"平衡不同时间尺度上的训练信号。", m:"1-NFE 2.62 · 2-NFE 2.30" },
-  { b:"b-flowmap", n:"Euler Mean Flows", d:"2026-02", v:"arXiv", t:"scratch", dom:["图像"], url:"https://arxiv.org/abs/2602.02571", idea:"研究如何强制轨迹一致性，边界条件易监督、轨迹一致难。" },
-  { b:"b-flowmap", n:"OT-NFM", d:"2026-04", v:"arXiv", t:"scratch", dom:["图像"], url:"https://arxiv.org/abs/2604.06413", idea:"用神经流参数化 flow map，加 OT 耦合，无需 ODE 积分。" },
-  { b:"b-flowmap", n:"Cumulative Flow Maps", d:"2026-05", v:"arXiv", t:"scratch", dom:["图像"], url:"https://arxiv.org/abs/2605.03623", idea:"把 MeanFlow 推广到 x-预测、EDM、DDIM 等参数化。" },
-  { b:"b-flowmap", n:"MeanFlow 方差削减", d:"2026-05", v:"arXiv", t:"scratch", dom:["图像"], url:"https://arxiv.org/abs/2605.09235", idea:"分析并降低 MeanFlow 训练目标的方差。" },
+  { b:"b-flowmap", k:"fmm", n:"Flow Map Matching", d:"2024-06", v:"arXiv", t:"mixed", dom:["图像"], url:"https://arxiv.org/abs/2406.07507", idea:"把少步生成表述为学习双时间 flow map。" },
+  { b:"b-flowmap", k:"shortcut", n:"Shortcut Models", d:"2024-10", v:"ICLR 2025", t:"scratch", dom:["图像"], url:"https://arxiv.org/abs/2410.12557", idea:"把步长作为条件，用\"两步小跳 = 一步大跳\"自洽训练。" },
+  { b:"b-flowmap", k:"meanflow", n:"MeanFlow", d:"2025-05", v:"NeurIPS 2025", t:"scratch", dom:["图像"], url:"https://arxiv.org/abs/2505.13447", idea:"平均速度恒等式，从头训练一步模型。", m:"1-NFE FID 3.43" },
+  { b:"b-flowmap", k:"boffi_cm", n:"How to build a CM（自蒸馏）", d:"2025-05", v:"arXiv", t:"scratch", dom:["图像"], url:"https://arxiv.org/abs/2505.18825", idea:"Eulerian / Lagrangian / Progressive 三类自蒸馏目标，统一 CTM、Shortcut 等。" },
+  { b:"b-flowmap", k:"ayf", n:"Align Your Flow", d:"2025-06", v:"NeurIPS 2025", t:"distill", dom:["图像"], url:"https://arxiv.org/abs/2506.14603", idea:"连续时间 flow map 蒸馏，多步时质量不退化。" },
+  { b:"b-flowmap", k:"tvm", n:"TVM", d:"2025-11", v:"ICLR 2026", t:"scratch", dom:["图像"], url:"https://arxiv.org/abs/2511.19797", idea:"在轨迹终点而非起点匹配速度；给出 W2 上界；修改 DiT 以满足 Lipschitz。", m:"1-NFE 3.29 · 4-NFE 1.99" },
+  { b:"b-flowmap", k:"esc", n:"ESC", d:"2025-12", v:"arXiv", t:"scratch", dom:["图像"], url:"https://arxiv.org/abs/2512.11831", idea:"系统研究 shortcut 类一步扩散的设计空间。", m:"1-NFE FID 2.53（480 epoch）" },
+  { b:"b-flowmap", k:"soflow", n:"SoFlow", d:"2025-12", v:"arXiv", t:"scratch", dom:["图像"], url:"https://arxiv.org/abs/2512.15657", idea:"Solution Flow Models，直接学习 ODE 解映射。" },
+  { b:"b-flowmap", k:"pmf", n:"pMF（像素 MeanFlow）", d:"2026-01", v:"arXiv", t:"scratch", dom:["图像"], url:"https://arxiv.org/abs/2601.22158", idea:"网络输出干净图像、损失在速度空间计算，实现无潜空间一步生成。", m:"像素 1-NFE FID 2.22" },
+  { b:"b-flowmap", k:"imf", n:"iMF", d:"2026", v:"CVPR 2026", t:"scratch", dom:["图像"], url:"https://arxiv.org/abs/2512.02012", idea:"把 MeanFlow 改写为 v-loss，并把引导强度作为条件输入，推理时可调。", m:"1-NFE FID 1.72（从头）" },
+  { b:"b-flowmap", k:"temf", n:"Temporal Equilibrium MeanFlow", d:"2026", v:"CVPR 2026", t:"scratch", dom:["图像"], url:"https://openaccess.thecvf.com/content/CVPR2026/papers/Tu_Temporal_Equilibrium_MeanFlow_Bridging_the_Scale_Gap_for_One-Step_Generation_CVPR_2026_paper.pdf", idea:"平衡不同时间尺度上的训练信号。", m:"1-NFE 2.62 · 2-NFE 2.30" },
+  { b:"b-flowmap", k:"emf", n:"Euler Mean Flows", d:"2026-02", v:"arXiv", t:"scratch", dom:["图像"], url:"https://arxiv.org/abs/2602.02571", idea:"研究如何强制轨迹一致性，边界条件易监督、轨迹一致难。" },
+  { b:"b-flowmap", k:"otnfm", n:"OT-NFM", d:"2026-04", v:"arXiv", t:"scratch", dom:["图像"], url:"https://arxiv.org/abs/2604.06413", idea:"用神经流参数化 flow map，加 OT 耦合，无需 ODE 积分。" },
+  { b:"b-flowmap", k:"cumflow", n:"Cumulative Flow Maps", d:"2026-05", v:"arXiv", t:"scratch", dom:["图像"], url:"https://arxiv.org/abs/2605.03623", idea:"把 MeanFlow 推广到 x-预测、EDM、DDIM 等参数化。" },
+  { b:"b-flowmap", k:"mf_var", n:"MeanFlow 方差削减", d:"2026-05", v:"arXiv", t:"scratch", dom:["图像"], url:"https://arxiv.org/abs/2605.09235", idea:"分析并降低 MeanFlow 训练目标的方差。" },
 
   // 分支 3
-  { b:"b-dmd", n:"DMD", d:"2023-11", v:"CVPR 2024", t:"distill", dom:["图像"], url:"https://arxiv.org/abs/2311.18828", idea:"real/fake 两个 score 之差作为一步生成器的梯度。" },
-  { b:"b-dmd", n:"DMD2", d:"2024-05", v:"NeurIPS 2024", t:"distill", dom:["图像"], url:"https://arxiv.org/abs/2405.14867", idea:"去掉回归损失、加入 GAN 项，支持多步学生。" },
-  { b:"b-dmd", n:"Decoupled DMD", d:"2025-11", v:"arXiv", t:"distill", dom:["图像"], url:"https://arxiv.org/abs/2511.22677", idea:"认为 CFG 增强才是少步转换的主因，分布匹配主要起稳定作用。" },
-  { b:"b-dmd", n:"DMDR", d:"2025-11", v:"arXiv", t:"distill", dom:["图像","对齐"], url:"https://arxiv.org/abs/2511.13649", idea:"DMD 与强化学习结合，少步学生超过多步老师。" },
-  { b:"b-dmd", n:"Adaptive Matching Distillation", d:"2026-02", v:"arXiv", t:"distill", dom:["图像"], url:"https://arxiv.org/abs/2602.07345", idea:"自适应的匹配蒸馏目标。" },
-  { b:"b-dmd", n:"R_dm", d:"2026-03", v:"arXiv", t:"distill", dom:["图像","对齐"], url:"https://arxiv.org/abs/2603.28460", idea:"把分布匹配重新理解为一种奖励。" },
-  { b:"b-dmd", n:"AdvDMD", d:"2026-04", v:"arXiv", t:"distill", dom:["图像","对齐"], url:"https://arxiv.org/abs/2604.28126", idea:"对抗奖励与 DMD 结合。" },
-  { b:"b-dmd", n:"Data-Forcing Distillation", d:"2026-06", v:"arXiv", t:"distill", dom:["视频"], url:"https://arxiv.org/abs/2606.18478", idea:"针对 reverse KL 的多样性下降和过饱和，用一行代码级的后训练修正。" },
-  { b:"b-dmd", n:"DyMD", d:"2026-09", v:"arXiv", t:"distill", dom:["视频"], url:"https://arxiv.org/abs/2609.31349", idea:"面向视频世界模型，14B 老师蒸馏到 1.3B 四步学生，保留交互动力学。" },
+  { b:"b-dmd", k:"dmd", n:"DMD", d:"2023-11", v:"CVPR 2024", t:"distill", dom:["图像"], url:"https://arxiv.org/abs/2311.18828", idea:"real/fake 两个 score 之差作为一步生成器的梯度。" },
+  { b:"b-dmd", k:"dmd2", n:"DMD2", d:"2024-05", v:"NeurIPS 2024", t:"distill", dom:["图像"], url:"https://arxiv.org/abs/2405.14867", idea:"去掉回归损失、加入 GAN 项，支持多步学生。" },
+  { b:"b-dmd", k:"ddmd", n:"Decoupled DMD", d:"2025-11", v:"arXiv", t:"distill", dom:["图像"], url:"https://arxiv.org/abs/2511.22677", idea:"认为 CFG 增强才是少步转换的主因，分布匹配主要起稳定作用。" },
+  { b:"b-dmd", k:"dmdr", n:"DMDR", d:"2025-11", v:"arXiv", t:"distill", dom:["图像","对齐"], url:"https://arxiv.org/abs/2511.13649", idea:"DMD 与强化学习结合，少步学生超过多步老师。" },
+  { b:"b-dmd", k:"amd", n:"Adaptive Matching Distillation", d:"2026-02", v:"arXiv", t:"distill", dom:["图像"], url:"https://arxiv.org/abs/2602.07345", idea:"自适应的匹配蒸馏目标。" },
+  { b:"b-dmd", k:"rdm", n:"R_dm", d:"2026-03", v:"arXiv", t:"distill", dom:["图像","对齐"], url:"https://arxiv.org/abs/2603.28460", idea:"把分布匹配重新理解为一种奖励。" },
+  { b:"b-dmd", k:"advdmd", n:"AdvDMD", d:"2026-04", v:"arXiv", t:"distill", dom:["图像","对齐"], url:"https://arxiv.org/abs/2604.28126", idea:"对抗奖励与 DMD 结合。" },
+  { b:"b-dmd", k:"dfd", n:"Data-Forcing Distillation", d:"2026-06", v:"arXiv", t:"distill", dom:["视频"], url:"https://arxiv.org/abs/2606.18478", idea:"针对 reverse KL 的多样性下降和过饱和，用一行代码级的后训练修正。" },
+  { b:"b-dmd", k:"dymd", n:"DyMD", d:"2026-09", v:"arXiv", t:"distill", dom:["视频"], url:"https://arxiv.org/abs/2609.31349", idea:"面向视频世界模型，14B 老师蒸馏到 1.3B 四步学生，保留交互动力学。" },
 
   // 分支 4
-  { b:"b-adv", n:"APT", d:"2025-01", v:"arXiv", t:"mixed", dom:["视频"], url:"https://arxiv.org/abs/2501.08316", idea:"以扩散模型为初始化，直接对真实数据做对抗后训练，实时一步生成 720p 视频。" },
-  { b:"b-adv", n:"SeedVR2", d:"2025-06", v:"arXiv", t:"mixed", dom:["视频"], url:"https://arxiv.org/abs/2506.05301", idea:"把 APT 用到一步视频修复。" },
-  { b:"b-adv", n:"Adversarial Flow Models", d:"2025-11", v:"ICML 2026", t:"scratch", dom:["图像"], url:"https://arxiv.org/abs/2511.22475", idea:"生成器学 flow matching 的确定性 OT 映射，用对抗目标从头训练。", m:"1-NFE FID 3.98（无引导，二手）" },
-  { b:"b-adv", n:"NextGAN", d:"2026-11", v:"arXiv", t:"mixed", dom:["图像","视频"], url:"https://arxiv.org/abs/2611.06270", idea:"直接规定生成器梯度而非判别器取值；单个模型支持 1/2/4 步。" },
+  { b:"b-adv", k:"apt", n:"APT", d:"2025-01", v:"arXiv", t:"mixed", dom:["视频"], url:"https://arxiv.org/abs/2501.08316", idea:"以扩散模型为初始化，直接对真实数据做对抗后训练，实时一步生成 720p 视频。" },
+  { b:"b-adv", k:"seedvr2", n:"SeedVR2", d:"2025-06", v:"arXiv", t:"mixed", dom:["视频"], url:"https://arxiv.org/abs/2506.05301", idea:"把 APT 用到一步视频修复。" },
+  { b:"b-adv", k:"afm", n:"Adversarial Flow Models", d:"2025-11", v:"ICML 2026", t:"scratch", dom:["图像"], url:"https://arxiv.org/abs/2511.22475", idea:"生成器学 flow matching 的确定性 OT 映射，用对抗目标从头训练。", m:"XL/2 1-NFE FID 2.38" },
+  { b:"b-adv", k:"nextgan", n:"NextGAN", d:"2026-11", v:"arXiv", t:"mixed", dom:["图像","视频"], url:"https://arxiv.org/abs/2611.06270", idea:"critic 的输入梯度回归真实与生成特征之差；可改造 14B 预训练模型，单模型支持 1/2/4 步。", m:"ImageNet 1-NFE 1.54（对抗形式 1.36）" },
 
   // 分支 5
-  { b:"b-dist", n:"Towards One-Step w/o Distillation", d:"2025-02", v:"arXiv", t:"scratch", dom:["图像"], url:"https://arxiv.org/abs/2502.08005", idea:"较早系统讨论不蒸馏能否训练一步扩散模型。" },
-  { b:"b-dist", n:"IMM", d:"2025-03", v:"ICML 2025", t:"scratch", dom:["图像"], url:"https://arxiv.org/abs/2503.07565", idea:"用 MMD 做归纳式矩匹配，证明 CM 是单粒子一阶矩特例。", m:"8-NFE FID 1.99" },
-  { b:"b-dist", n:"Drifting Models", d:"2026-02", v:"NeurIPS 2026 Oral", t:"scratch", dom:["图像"], url:"https://arxiv.org/abs/2602.04770", idea:"训练过程中让推前分布\"漂移\"到数据分布，天然支持一步推理。", m:"1-NFE 1.54（潜空间）· 1.61（像素）" },
-  { b:"b-dist", n:"W-Flow", d:"2026-05", v:"arXiv", t:"scratch", dom:["图像"], url:"https://arxiv.org/abs/2605.11755", idea:"Sinkhorn 散度的 Wasserstein 梯度流，再把演化压缩进一步生成器。", m:"1-NFE FID 1.29（XL）" },
-  { b:"b-dist", n:"Priming Models", d:"2026-10", v:"arXiv", t:"scratch", dom:["图像","视频"], url:"https://arxiv.org/abs/2610.20331", idea:"先做固定噪声水平重建，再做分布后训练；不需要老师也不需要 flow map。", m:"1-NFE FID 1.19（二手）" },
+  { b:"b-dist", k:"diffratio", n:"DiffRatio", d:"2025-02", v:"arXiv", t:"mixed", dom:["图像"], url:"https://arxiv.org/abs/2502.08005", idea:"用分类器直接估计生成/数据的密度比，其梯度即 score 差；不需要老师监督，预训练模型只做初始化。" },
+  { b:"b-dist", k:"imm", n:"IMM", d:"2025-03", v:"ICML 2025", t:"scratch", dom:["图像"], url:"https://arxiv.org/abs/2503.07565", idea:"用 MMD 做归纳式矩匹配，证明 CM 是单粒子一阶矩特例。", m:"8-NFE FID 1.99" },
+  { b:"b-dist", k:"drifting", n:"Drifting Models", d:"2026-02", v:"NeurIPS 2026 Oral", t:"scratch", dom:["图像"], url:"https://arxiv.org/abs/2602.04770", idea:"训练过程中让推前分布\"漂移\"到数据分布，天然支持一步推理。", m:"1-NFE 1.54（潜空间）· 1.61（像素）" },
+  { b:"b-dist", k:"wflow", n:"W-Flow", d:"2026-05", v:"arXiv", t:"scratch", dom:["图像"], url:"https://arxiv.org/abs/2605.11755", idea:"Sinkhorn 散度的 Wasserstein 梯度流，再把演化压缩进一步生成器。", m:"1-NFE FID 1.29（XL）" },
+  { b:"b-dist", k:"priming", n:"Priming Models", d:"2026-10", v:"arXiv", t:"scratch", dom:["图像","视频"], url:"https://arxiv.org/abs/2610.20331", idea:"先做固定噪声水平重建，再做分布后训练；不需要老师也不需要 flow map。", m:"1-NFE FID 1.19（像素空间、无 CFG）" },
 
   // 分支 6
-  { b:"b-reflow", n:"Rectified Flow", d:"2022-09", v:"ICLR 2023", t:"distill", dom:["图像"], url:"https://arxiv.org/abs/2209.03003", idea:"通过重新耦合拉直轨迹。" },
-  { b:"b-reflow", n:"InstaFlow", d:"2023-09", v:"ICLR 2024", t:"distill", dom:["图像"], url:"https://arxiv.org/abs/2309.06380", idea:"ReFlow 用于文生图一步生成。" },
-  { b:"b-reflow", n:"Improving the Training of RF", d:"2024-05", v:"NeurIPS 2024", t:"distill", dom:["图像"], url:"https://arxiv.org/abs/2405.20320", idea:"改进 ReFlow 的训练技巧，一轮 ReFlow 即可接近多轮效果。" },
+  { b:"b-reflow", k:"rf", n:"Rectified Flow", d:"2022-09", v:"ICLR 2023", t:"distill", dom:["图像"], url:"https://arxiv.org/abs/2209.03003", idea:"通过重新耦合拉直轨迹。" },
+  { b:"b-reflow", k:"instaflow", n:"InstaFlow", d:"2023-09", v:"ICLR 2024", t:"distill", dom:["图像"], url:"https://arxiv.org/abs/2309.06380", idea:"ReFlow 用于文生图一步生成。" },
+  { b:"b-reflow", k:"rf_improve", n:"Improving the Training of RF", d:"2024-05", v:"NeurIPS 2024", t:"distill", dom:["图像"], url:"https://arxiv.org/abs/2405.20320", idea:"改进 ReFlow 的训练技巧，一轮 ReFlow 即可接近多轮效果。" },
 
   // 扩展：语言 / 对齐 / 条件
-  { b:"ext", n:"FMLM", d:"2026-02", v:"arXiv", t:"distill", dom:["语言"], url:"https://arxiv.org/abs/2602.16813", idea:"连续空间的流语言模型蒸馏成 flow map，一步质量超过离散扩散 8 步。" },
-  { b:"ext", n:"DiDi-Instruct", d:"2025-09", v:"ICLR 2026", t:"distill", dom:["语言"], url:"https://arxiv.org/abs/2509.25035", idea:"把分布匹配蒸馏用到掩码扩散语言模型，最高 64× 加速。" },
-  { b:"ext", n:"T3D", d:"2026-02", v:"arXiv", t:"distill", dom:["语言"], url:"https://arxiv.org/abs/2602.12262", idea:"轨迹自蒸馏 + 直接判别优化，改善扩散语言模型少步解码。" },
-  { b:"ext", n:"Coupling Models", d:"2026-05", v:"arXiv", t:"scratch", dom:["语言"], url:"https://arxiv.org/abs/2605.07193", idea:"离散数据的一步生成。" },
-  { b:"ext", n:"Meta Flow Maps", d:"2026-01", v:"arXiv", t:"mixed", dom:["对齐"], url:"https://arxiv.org/abs/2601.14430", idea:"利用 flow map 做可扩展的奖励对齐。" },
-  { b:"ext", n:"Variational Flow Maps", d:"2026-03", v:"arXiv", t:"mixed", dom:["图像","对齐"], url:"https://arxiv.org/abs/2603.07276", idea:"指出 flow map 的 guidance gap，引入噪声实现一步条件生成。" },
-  { b:"ext", n:"Flow-Map GRPO", d:"2026-07", v:"arXiv", t:"mixed", dom:["对齐"], url:"https://arxiv.org/abs/2607.00535", idea:"用锚定随机组合给少步 flow map 引入探索，做 GRPO。" }
+  { b:"ext", k:"fmlm", n:"FMLM", d:"2026-02", v:"arXiv", t:"distill", dom:["语言"], url:"https://arxiv.org/abs/2602.16813", idea:"连续空间的流语言模型蒸馏成 flow map，一步质量超过离散扩散 8 步。" },
+  { b:"ext", k:"didi", n:"DiDi-Instruct", d:"2025-09", v:"ICLR 2026", t:"distill", dom:["语言"], url:"https://arxiv.org/abs/2509.25035", idea:"把分布匹配蒸馏用到掩码扩散语言模型，最高 64× 加速。" },
+  { b:"ext", k:"t3d", n:"T3D", d:"2026-02", v:"arXiv", t:"distill", dom:["语言"], url:"https://arxiv.org/abs/2602.12262", idea:"轨迹自蒸馏 + 直接判别优化，改善扩散语言模型少步解码。" },
+  { b:"ext", k:"coupling", n:"Coupling Models", d:"2026-05", v:"arXiv", t:"scratch", dom:["语言"], url:"https://arxiv.org/abs/2605.07193", idea:"离散数据的一步生成。" },
+  { b:"ext", k:"mfm", n:"Meta Flow Maps", d:"2026-01", v:"arXiv", t:"mixed", dom:["对齐"], url:"https://arxiv.org/abs/2601.14430", idea:"利用 flow map 做可扩展的奖励对齐。" },
+  { b:"ext", k:"vfm", n:"Variational Flow Maps", d:"2026-03", v:"arXiv", t:"mixed", dom:["图像","对齐"], url:"https://arxiv.org/abs/2603.07276", idea:"指出 flow map 的 guidance gap，引入噪声实现一步条件生成。" },
+  { b:"ext", k:"fmgrpo", n:"Flow-Map GRPO", d:"2026-07", v:"arXiv", t:"mixed", dom:["对齐"], url:"https://arxiv.org/abs/2607.00535", idea:"用锚定随机组合给少步 flow map 引入探索，做 GRPO。" }
 ];
 
 const EXT = { id:"ext", code:"扩展", name:"跨模态与后训练", train:"mixed",
@@ -588,19 +665,21 @@ const EXT = { id:"ext", code:"扩展", name:"跨模态与后训练", train:"mixe
   open:["离散空间里 flow map 怎么定义", "一步模型的探索与奖励优化", "引导、逆问题在一步模型里的形式"] };
 
 const BOARD = [
-  { n:"Priming Models", s:"从头 · 二手", f:1.19, t:"scratch" },
+  { n:"Priming Models", s:"从头 · 像素", f:1.19, t:"scratch" },
   { n:"W-Flow XL", s:"从头", f:1.29, t:"scratch" },
   { n:"Drifting", s:"从头 · 潜空间", f:1.54, t:"scratch" },
+  { n:"NextGAN", s:"对抗 · 潜空间", f:1.54, t:"mixed" },
   { n:"Drifting", s:"从头 · 像素", f:1.61, t:"scratch" },
-  { n:"DE-CM", s:"一致性", f:1.70, t:"mixed" },
-  { n:"iMF XL", s:"从头 · 二手", f:1.72, t:"scratch" },
-  { n:"FACM", s:"蒸馏", f:1.76, t:"distill" },
+  { n:"DE-CM", s:"一致性蒸馏", f:1.70, t:"distill" },
+  { n:"FACM", s:"一致性蒸馏", f:1.70, t:"distill" },
+  { n:"iMF XL", s:"从头", f:1.72, t:"scratch" },
   { n:"pMF", s:"从头 · 像素", f:2.22, t:"scratch" },
   { n:"ESC", s:"从头 · 480 ep", f:2.53, t:"scratch" },
   { n:"TE-MeanFlow", s:"从头", f:2.62, t:"scratch" },
   { n:"TVM", s:"从头", f:3.29, t:"scratch" },
-  { n:"MeanFlow", s:"从头 · 2025", f:3.43, t:"scratch" },
-  { n:"AFM XL", s:"从头 · 无引导", f:3.98, t:"scratch" }
+  { n:"AFM XL/2", s:"对抗 · 从头", f:2.38, t:"scratch" },
+  { n:"SoFlow XL/2", s:"从头", f:2.96, t:"scratch" },
+  { n:"MeanFlow", s:"从头 · 2025", f:3.43, t:"scratch" }
 ];
 
 const TRAIN_LABEL = { scratch:"从头训练", distill:"需要老师", mixed:"两者都有" };
@@ -615,8 +694,114 @@ function paperCard(p){
     <div class="p-top"><span class="p-name"><a href="${p.url}" target="_blank" rel="noopener">${esc(p.n)}</a></span><span class="p-date">${p.d} · ${esc(p.v)}</span></div>
     <p class="p-idea">${esc(p.idea)}</p>
     ${p.m ? `<span class="p-metric">${esc(p.m)}</span>` : ""}
-    <div class="p-tags">${tags}${isNew ? '<span class="new-badge">NEW</span>' : ""}</div>
+    <div class="p-actions">
+      <div class="p-tags">${tags}${isNew ? '<span class="new-badge">NEW</span>' : ""}</div>
+      ${DETAILS[p.k] ? `<button class="read-btn" type="button" data-k="${p.k}">读解读 →</button>` : ""}
+    </div>
   </article>`;
+}
+
+/* ---------- Explainer drawer ---------- */
+const DETAILS = window.PAPER_DETAILS || {};
+const BRANCH_NAME = {};
+const ORDER = [];
+let current = null, lastFocus = null;
+
+function buildOrder(){
+  [...BRANCHES, EXT].forEach(b => {
+    BRANCH_NAME[b.id] = `${b.code} · ${b.name}`;
+    PAPERS.filter(p => p.b === b.id).sort((a, c) => a.d.localeCompare(c.d)).forEach(p => ORDER.push(p));
+  });
+}
+
+function detailHTML(p, d){
+  const sec = (title, html) => html ? `<section class="d-sec"><h4>${title}</h4>${html}</section>` : "";
+  const para = s => s ? (s.trim().startsWith("<") ? s : `<p>${s}</p>`) : "";
+  const algo = d.algo && d.algo.length ? `<pre class="d-algo">${d.algo.map(esc).join("\n")}</pre>` : "";
+  let table = "";
+  if (d.results) {
+    const r = d.results;
+    table = `<div class="d-table-wrap"><table class="d-table"><thead><tr>${r.head.map(h => `<th>${esc(h)}</th>`).join("")}</tr></thead>
+      <tbody>${r.rows.map(row => `<tr>${row.map(c => `<td>${esc(c)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>
+      ${r.note ? `<p class="d-note">${esc(r.note)}</p>` : ""}`;
+  }
+  const i = ORDER.indexOf(p);
+  const prev = ORDER[i - 1], next = ORDER[i + 1];
+  return `
+    <p class="d-tldr">${d.tldr}</p>
+    ${sec("问题动机", para(d.motivation))}
+    ${sec("核心方法", para(d.method))}
+    ${sec("训练算法（伪代码）", algo)}
+    ${sec("理论", para(d.theory))}
+    ${sec("实验结果", table)}
+    ${sec("局限", para(d.limits))}
+    ${sec("与其他工作的关系", para(d.relations))}
+    <div class="d-nav">
+      <button type="button" data-k="${prev ? prev.k : ""}" ${prev ? "" : "disabled"}>← ${prev ? esc(prev.n) : "没有了"}</button>
+      <button type="button" data-k="${next ? next.k : ""}" ${next ? "" : "disabled"}>${next ? esc(next.n) : "没有了"} →</button>
+    </div>`;
+}
+
+function typeset(el){
+  const mj = window.MathJax;
+  if (mj && mj.typesetPromise) {
+    try { mj.typesetClear && mj.typesetClear([el]); } catch (e) {}
+    mj.typesetPromise([el]).catch(() => {});
+  } else {
+    setTimeout(() => { if (current) typeset(el); }, 400);
+  }
+}
+
+function openPaper(k, fromHash){
+  const p = PAPERS.find(x => x.k === k), d = DETAILS[k];
+  if (!p || !d) return;
+  if (!current) lastFocus = document.activeElement;
+  current = k;
+  document.getElementById("dBranch").textContent = BRANCH_NAME[p.b] || "";
+  document.getElementById("dTitle").textContent = p.n;
+  const srcLabel = d.src === "full" ? "依据原文全文整理" : "经典工作，依据整理者记忆撰写，细节请对照原文";
+  document.getElementById("dMeta").innerHTML =
+    `<span class="mono">${esc(p.d)}</span><span>${esc(p.v)}</span><span class="tag ${p.t}">${TRAIN_LABEL[p.t]}</span>` +
+    `<span class="d-src ${d.src}">${srcLabel}</span><a href="${p.url}" target="_blank" rel="noopener">原文 ↗</a>`;
+  const body = document.getElementById("dBody");
+  body.innerHTML = detailHTML(p, d);
+  body.scrollTop = 0;
+  document.getElementById("drawer").hidden = false;
+  document.getElementById("scrim").hidden = false;
+  document.body.classList.add("drawer-open");
+  document.getElementById("dClose").focus({ preventScroll: true });
+  const h = "#p-" + k.replace(/_/g, "-");
+  if (!fromHash && location.hash !== h) history.replaceState(null, "", h);
+  typeset(body);
+}
+
+function closePaper(){
+  if (!current) return;
+  current = null;
+  document.getElementById("drawer").hidden = true;
+  document.getElementById("scrim").hidden = true;
+  document.body.classList.remove("drawer-open");
+  if (location.hash.startsWith("#p-")) history.replaceState(null, "", location.pathname + location.search);
+  if (lastFocus && lastFocus.focus) lastFocus.focus({ preventScroll: true });
+}
+
+function wireDrawer(){
+  document.getElementById("branchList").addEventListener("click", e => {
+    const b = e.target.closest(".read-btn"); if (b) openPaper(b.dataset.k);
+  });
+  document.getElementById("dBody").addEventListener("click", e => {
+    const b = e.target.closest(".d-nav button"); if (b && b.dataset.k) openPaper(b.dataset.k);
+  });
+  document.getElementById("dClose").addEventListener("click", closePaper);
+  document.getElementById("scrim").addEventListener("click", closePaper);
+  document.addEventListener("keydown", e => { if (e.key === "Escape") closePaper(); });
+  const fromHash = () => {
+    const m = location.hash.match(/^#p-([a-z0-9-]+)$/);
+    const k = m ? m[1].replace(/-/g, "_") : null;
+    if (k && DETAILS[k]) openPaper(k, true); else if (current) closePaper();
+  };
+  window.addEventListener("hashchange", fromHash);
+  fromHash();
 }
 
 function branchBlock(b){
@@ -682,7 +867,7 @@ function wireFilters(){
 function renderBoard(){
   const box = document.getElementById("boardBox");
   const max = 4;
-  const rows = BOARD.map(r => `<div class="b-row">
+  const rows = [...BOARD].sort((a, b) => a.f - b.f).map(r => `<div class="b-row">
       <span class="b-name">${esc(r.n)}<small>${esc(r.s)}</small></span>
       <div class="b-track"><div class="b-bar ${r.t}" style="width:${(r.f / max * 100).toFixed(2)}%"></div></div>
       <span class="b-val">${r.f.toFixed(2)}</span>
@@ -691,8 +876,10 @@ function renderBoard(){
   box.insertAdjacentHTML("beforeend", `<div class="b-legend"><span class="tag scratch">从头训练</span><span class="tag distill">蒸馏</span><span class="tag mixed">未区分</span></div>`);
 }
 
+buildOrder();
 renderBranches();
 renderBoard();
 wireFilters();
 applyFilters();
+wireDrawer();
 </script>
