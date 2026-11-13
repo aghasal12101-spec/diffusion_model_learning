@@ -246,6 +246,7 @@ window.MathJax = {
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg-full.min.js" async></script>
 <script src="flowmap/lab.js" charset="utf-8"></script>
+<script src="flowmap/chapters.js" charset="utf-8"></script>
 <script>
 (function () {
   const CH = [
@@ -287,10 +288,10 @@ window.MathJax = {
     document.querySelectorAll("#railList a").forEach(a => { if (a.dataset.id === id) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
     sel.value = id;
     root.innerHTML = `<p class="loading">正在载入讲义…</p>`;
-    let html = cache[id];
+    let html = cache[id] || (window.FLOWMAP_CHAPTERS || {})[id];
     if (!html) {
       try { const r = await fetch(`flowmap/ch/${id}.html`); if (!r.ok) throw new Error(r.status); html = await r.text(); cache[id] = html; }
-      catch (e) { root.innerHTML = `<p class="loading">这一讲没有载入成功，请刷新页面再试。</p>`; return; }
+      catch (e) { root.innerHTML = `<p class="loading">这一讲没有载入成功。如果是从本地打开的，请确认 flowmap 文件夹和本页面放在一起，或改用单文件版 flowmap_lectures_standalone.html。</p>`; return; }
     }
     if (current !== id) return;
     const prev = FLAT[idx - 1], next = FLAT[idx + 1];
