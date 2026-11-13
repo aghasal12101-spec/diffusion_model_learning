@@ -1,0 +1,103 @@
+<header class="row cover">
+  <div class="main">
+    <p class="eyebrow">第 1 讲 · 奠基 · 2024</p>
+    <h1>Flow Map Matching：<em>把对象定下来</em></h1>
+    <p class="lede">这篇论文的贡献不在某个数字，而在于把"少步生成"统一成学习双时间流映射，并给出三种刻画、两种蒸馏损失和一种直接训练损失。后面的论文几乎都站在它上面。</p>
+    <div class="byline"><span>作者 <b>Boffi, Albergo, Vanden-Eijnden</b></span><span>arXiv <b><a href="https://arxiv.org/abs/2406.07507" target="_blank" rel="noopener">2406.07507</a></b></span></div>
+    <div class="tagrow"><span>框架</span><span>Lagrangian / Eulerian 蒸馏</span><span>直接训练</span><span>Wasserstein 控制</span></div>
+  </div>
+  <aside class="aside">
+    <p><b>原文记号</b></p>
+    <p>随机插值 \(I_t=\alpha_t x_0+\beta_t x_1+\gamma_t z\)，\(t=0\) 为基分布、\(t=1\) 为数据；流映射写作 \(X_{s,t}\)，从时间 \(s\) 到 \(t\)。</p>
+    <p>本讲为了和原文对照，保留 \(X_{s,t}\) 的写法。</p>
+  </aside>
+</header>
+
+<section>
+  <div class="row">
+    <div class="main">
+      <h2><span class="num">1</span>在解决什么问题</h2>
+      <p>当时的少步方法各有各的对象：一致性模型只学"跳到终点"的 \(X_{t\to0}\)，渐进蒸馏学固定步长的跳跃。它们都不能自由选择步数，理论上也缺一个统一的说法。</p>
+      <p>作者的主张是：<b>学双时间流映射 \(X_{s,t}\)</b>，它同时覆盖一步、少步和任意网格上的多步采样；并且它可以用几个简单的方程刻画，这些方程可以直接变成损失函数。</p>
+    </div>
+    <aside class="aside"><p>一致性模型对应 \(X_{t,1}\) 这一"列"；渐进蒸馏对应固定间隔的 \(X_{t,t+\Delta}\)。</p></aside>
+  </div>
+</section>
+
+<section>
+  <div class="row">
+    <div class="main">
+      <h2><span class="num">2</span>流映射的刻画</h2>
+      <p>设插值 \(I_t\) 诱导的速度场为 \(b_t\)，流映射满足 \(X_{s,t}(x_s)=x_t\)。作者证明它由下面任意一组条件唯一确定（加上 \(X_{s,s}=\mathrm{id}\)）：</p>
+      <div class="display">$$\partial_t X_{s,t}(x)=b_t\big(X_{s,t}(x)\big) \tag{1}\label{eq:fmm-lag}$$</div>
+      <div class="display">$$\partial_s X_{s,t}(x)+\nabla X_{s,t}(x)\,b_s(x)=0 \tag{2}\label{eq:fmm-eul}$$</div>
+      <div class="display">$$X_{u,t}\circ X_{s,u}=X_{s,t} \tag{3}\label{eq:fmm-semi}$$</div>
+      <p>式 \eqref{eq:fmm-lag} 是 Lagrangian 方程（终点沿速度移动），式 \eqref{eq:fmm-eul} 是 Eulerian 方程（起点移动、终点不变），式 \eqref{eq:fmm-semi} 是半群性质。这正是导论里的三个方程，只是时间方向相反。</p>
+      <p>参数化取</p>
+      <div class="display result">$$X_{s,t}(x)=x+(t-s)\,v_{s,t}(x), \tag{4}\label{eq:fmm-param}$$</div>
+      <p>这样 \(X_{s,s}=\mathrm{id}\) 自动成立，而且对角线上 \(v_{t,t}=b_t\)：同一个网络在 \(s=t\) 时就是速度场。</p>
+    </div>
+    <aside class="aside">
+      <p>式 (4) 后来被 MeanFlow（\(u\)）、TVM（\(F_\theta\)）、AYF 等几乎所有工作沿用，只是换了名字。</p>
+      <p>\(v_{s,t}\) 就是区间 \([s,t]\) 上的平均速度。</p>
+    </aside>
+  </div>
+</section>
+
+<section>
+  <div class="row">
+    <div class="main">
+      <h2><span class="num">3</span>已知速度场时：两种蒸馏损失</h2>
+      <p>如果手上有一个训练好的速度场 \(b\)（例如预训练扩散模型），就把式 \eqref{eq:fmm-lag} 或 \eqref{eq:fmm-eul} 的残差当损失：</p>
+      <div class="display">$$\mathcal L_{\text{LMD}}=\int\!\!\int \mathbb E\,\Big|\partial_t\hat X_{s,t}(I_s)-b_t\big(\hat X_{s,t}(I_s)\big)\Big|^2\,\mathrm ds\,\mathrm dt \tag{5}\label{eq:lmd}$$</div>
+      <div class="display">$$\mathcal L_{\text{EMD}}=\int\!\!\int \mathbb E\,\Big|\partial_s\hat X_{s,t}(I_s)+\nabla\hat X_{s,t}(I_s)\,b_s(I_s)\Big|^2\,\mathrm ds\,\mathrm dt \tag{6}\label{eq:emd}$$</div>
+      <p>导数都可以用一次 JVP 算。两者的区别后面会反复出现：<span class="hl-a">LMD 只对时间求导</span>，<span class="hl-b">EMD 要对输入求导，并把速度放进切向量</span>。</p>
+
+      <div class="thm">
+        <div class="thm-label">定理 <i>（Wasserstein 控制）</i></div>
+        <p>以 LMD 为例：设 \(\hat\rho_1\) 是 \(\hat X_{0,1}\) 推前得到的分布，\(\rho_1\) 是目标分布，则</p>
+        <div class="display">$$W_2^2(\rho_1,\hat\rho_1)\le e^{1+2\int_0^1|C_t|\,\mathrm dt}\;\mathcal L_{\text{LMD}}(\hat X),$$</div>
+        <p>常数 \(C_t\) 与速度场的光滑性有关。EMD 有类似的结果。也就是说，把损失压低，生成分布就一定接近目标。</p>
+      </div>
+    </div>
+    <aside class="aside">
+      <p>这里的蒸馏老师是速度场，不是采样器：不需要像渐进蒸馏那样先跑多步 ODE 生成配对。</p>
+      <p>TVM 的 \(W_2\) 上界（第 6 讲）和这个定理一脉相承，同样需要 Lipschitz 一类的光滑性。</p>
+    </aside>
+  </div>
+</section>
+
+<section>
+  <div class="row">
+    <div class="main">
+      <h2><span class="num">4</span>没有老师时：直接训练</h2>
+      <p>论文还给了一个不需要预训练速度场的损失，叫 Flow Map Matching（FMM）：</p>
+      <div class="display result">$$\mathcal L_{\text{FMM}}=\int\!\!\int w_{s,t}\Big(\mathbb E\,\big|\class{ta}{\partial_t\hat X_{s,t}(\hat X_{t,s}(I_t))-\dot I_t}\big|^2+\mathbb E\,\big|\class{tb}{\hat X_{s,t}(\hat X_{t,s}(I_t))-I_t}\big|^2\Big)\,\mathrm ds\,\mathrm dt. \tag{7}\label{eq:fmm}$$</div>
+      <p>它同时训练正向和反向的映射。设 \(y=\hat X_{t,s}(I_t)\)，即从 \(I_t\) 往回跳到时间 \(s\)：</p>
+      <ul class="plain">
+        <li><span class="hl-b">第二项</span>要求再从 \(y\) 跳回 \(t\) 时回到原点，即 \(\hat X_{s,t}\) 与 \(\hat X_{t,s}\) 互为逆映射；</li>
+        <li><span class="hl-a">第一项</span>要求跳回 \(t\) 时的终点速度等于插值的时间导数 \(\dot I_t\)。和 flow matching 一样，\(\dot I_t\) 对 \(I_t\) 取条件期望正好是 \(b_t\)，所以这一项无偏。</li>
+      </ul>
+      <p>两项合起来，等价于"终点处的速度对"，即 Lagrangian 条件，而回归目标只用到了数据。这是"从头训练流映射"最早的形式之一；后来的自蒸馏（第 4 讲）把它简化为"对角线学速度 + 非对角线满足方程"。</p>
+
+      <h3>实验结果</h3>
+      <p>论文在二维棋盘格和 CIFAR-10、ImageNet-32 上验证：同样步数下，少步采样明显优于直接用 ODE 求解器；还比较了与一致性模型、渐进蒸馏的关系。实验规模不大，重点在框架。</p>
+    </div>
+    <aside class="aside">
+      <p>式 (7) 里的复合 \(\hat X_{s,t}\circ\hat X_{t,s}\) 是关键：先往回跳，就能把"在 \(t\) 处的数据样本"变成"从 \(s\) 出发的轨迹的终点"，于是终点速度可以用数据监督。</p>
+      <p>附录说明了流映射与去噪器、一致性模型、渐进蒸馏、神经算子的关系。</p>
+    </aside>
+  </div>
+</section>
+
+<section class="row">
+  <div class="main summary">
+    <h2>小结</h2>
+    <ol>
+      <li><span>对象：双时间流映射 \(X_{s,t}(x)=x+(t-s)v_{s,t}(x)\)，对角线就是速度场。</span></li>
+      <li><span>刻画：Lagrangian、Eulerian、半群三个方程；前两者的残差可以直接做蒸馏损失，并控制 \(W_2\) 距离。</span></li>
+      <li><span>直接训练：用"往回跳再跳回来"的复合，让终点速度可以用数据无偏监督。</span></li>
+    </ol>
+  </div>
+  <aside class="aside"></aside>
+</section>

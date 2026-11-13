@@ -1,0 +1,79 @@
+<header class="row cover">
+  <div class="main">
+    <p class="eyebrow">第 16 讲 · 收束</p>
+    <h1>总结：<em>一张对照表</em></h1>
+    <p class="lede">把 15 篇论文放回导论的三个问题里：用了哪个方程，导数怎么算，目标里的噪声怎么处理。最后列出这条线还没解决的问题。</p>
+    <div class="byline"><span>覆盖 <b>15 篇论文</b></span></div>
+  </div>
+  <aside class="aside"><p>FID 均为 ImageNet 256、一步生成，训练设置各不相同，只能作为量级参考。</p></aside>
+</header>
+
+<section>
+  <div class="row">
+    <div class="main">
+      <h2><span class="num">1</span>对照表</h2>
+      <div class="tablewrap"><table class="cmp">
+        <thead><tr><th>论文</th><th>方程</th><th>导数</th><th>老师</th><th>目标噪声的处理</th><th>一步 FID</th></tr></thead>
+        <tbody>
+          <tr><td>FMM</td><td>L / E / 直接训练</td><td>JVP</td><td>可有可无</td><td>—</td><td>—</td></tr>
+          <tr><td>Shortcut</td><td>半群</td><td>无</td><td>无</td><td>—</td><td>—</td></tr>
+          <tr><td>MeanFlow</td><td>E</td><td>JVP，切向量含 \(v_{\text{cond}}\)</td><td>无</td><td>自适应权重</td><td>3.43</td></tr>
+          <tr><td>自蒸馏框架</td><td>L / E / 半群</td><td>JVP 或无</td><td>无</td><td>比较三类，LSD 最好</td><td>—</td></tr>
+          <tr><td>AYF</td><td>E（图像）/ L</td><td>JVP</td><td>预训练速度</td><td>老师速度无噪声</td><td>—</td></tr>
+          <tr><td>TVM</td><td>L</td><td>只对时间求导</td><td>无</td><td>条件速度不进 JVP</td><td>3.29</td></tr>
+          <tr><td>iMF</td><td>E</td><td>JVP，切向量用速度头</td><td>无</td><td>确定性切向量 + \(v\)-loss</td><td>1.72</td></tr>
+          <tr><td>pMF</td><td>E</td><td>JVP</td><td>无</td><td>同 iMF；\(x\)-预测</td><td>2.22（像素）</td></tr>
+          <tr><td>MF 方差削减</td><td>E</td><td>JVP</td><td>无</td><td>切向量混合 \(\beta\) 的理论</td><td>—</td></tr>
+          <tr><td>ESC</td><td>E / 半群框架</td><td>JVP</td><td>无</td><td>plug-in 速度</td><td>2.85 / 2.53</td></tr>
+          <tr><td>TE-MeanFlow</td><td>E</td><td>JVP</td><td>无</td><td>按跨度均衡权重</td><td>2.62</td></tr>
+          <tr><td>SoFlow</td><td>E</td><td>有限差分</td><td>无</td><td>差分步长课程</td><td>2.96</td></tr>
+          <tr><td>EMF</td><td>半群（局部线性化）</td><td>有限差分</td><td>无</td><td>瞬时项用数据监督</td><td>—</td></tr>
+          <tr><td>Cumulative FM</td><td>半群</td><td>—</td><td>可选初始化</td><td>—</td><td>—</td></tr>
+          <tr><td>OT-NFM</td><td>直接回归</td><td>无</td><td>无</td><td>靠 OT 耦合避免塌缩</td><td>—</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+    <aside class="aside"><p>"—"表示论文没有在 ImageNet 256 上报告一步结果，或者那一栏不适用。</p></aside>
+  </div>
+</section>
+
+<section>
+  <div class="row">
+    <div class="main">
+      <h2><span class="num">2</span>三条主线</h2>
+      <p><b>换方程。</b>从 Eulerian（MeanFlow）到 Lagrangian（TVM），条件速度不再进入 JVP；自蒸馏框架的实验和 TVM 的理论都支持这个方向。</p>
+      <p><b>处理目标噪声。</b>iMF 用确定性切向量，ESC 用整批估计，TE-MeanFlow 在跨度之间均衡，方差削减一文把它们统一到"控制变量"的视角下，同时提醒：方差最优不等于 FID 最优。</p>
+      <p><b>去掉 JVP。</b>SoFlow 与 EMF 用有限差分，代价是差分步长的选择；sCM、TVM、FACM 则选择写专门的 JVP 核硬扛。</p>
+    </div>
+    <aside class="aside"></aside>
+  </div>
+</section>
+
+<section>
+  <div class="row">
+    <div class="main">
+      <h2><span class="num">3</span>还没解决的问题</h2>
+      <ul class="plain">
+        <li><b>flow map 还有优势吗？</b>2026 年的一步 SOTA 已经转到分布层面的方法（Drifting 1.54、W-Flow 1.29、Priming 1.19）。flow map 的独特之处在于可以自由选择步数、多步质量不退化；这一点能否转化为一步之外的实际优势，是值得做的对比实验。</li>
+        <li><b>Lagrangian 型的偏差。</b>TVM 用模型自己的落脚点取速度，引入偏差；它的代价与 Eulerian 型的方差相比到底怎样，目前缺少受控比较。</li>
+        <li><b>方差和质量的错配。</b>为什么 FID 偏好无偏的高方差目标？这可能和泛化、记忆化有关。</li>
+        <li><b>引导与条件生成。</b>CFG 写进训练目标或作为条件输入都是权宜之计；逆问题和奖励引导在一步模型里的形式还很初步。</li>
+        <li><b>规模化。</b>这条线大多停留在 ImageNet；只有 AYF（FLUX.1）、TVM（10B+）、FACM 等少数工作扩展到文生图或视频。</li>
+      </ul>
+      <p>如果要选一个适合动手的起点：在本讲义的二维例子上，把 MeanFlow、TVM、SoFlow 三种目标用同一个小 MLP 训练，比较训练曲线、目标方差和多步采样质量，就能把这条线的大部分结论亲手验证一遍。</p>
+    </div>
+    <aside class="aside"></aside>
+  </div>
+</section>
+
+<section class="row">
+  <div class="main summary">
+    <h2>全程小结</h2>
+    <ol>
+      <li><span>对象只有一个：流映射 / 平均速度；只有速度能从数据里无偏地学。</span></li>
+      <li><span>方法的差别归结为三个选择：方程、导数的算法、目标噪声的处理。</span></li>
+      <li><span>这条线正在从"能训练"走向"训练得稳、算得省、用得广"，而一步生成的最好成绩已经出现在分布层面的方法里。</span></li>
+    </ol>
+  </div>
+  <aside class="aside"></aside>
+</section>

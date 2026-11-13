@@ -1,0 +1,72 @@
+<header class="row cover">
+  <div class="main">
+    <p class="eyebrow">第 7 讲 · 修补 MeanFlow · CVPR 2026</p>
+    <h1>Improved MeanFlow：<em>改成标准回归，引导可调</em></h1>
+    <p class="lede">原始 MeanFlow 有两个"快进模型"特有的问题：回归目标里含有网络自身，引导强度在训练时写死。iMF 把损失改写成对瞬时速度的回归，把引导变成条件输入，再换成多 token 的 in-context 条件化，从头训练就做到一步 FID 1.72。</p>
+    <div class="byline"><span>作者 <b>Geng 等</b></span><span>arXiv <b><a href="https://arxiv.org/abs/2512.02012" target="_blank" rel="noopener">2512.02012</a></b></span><span>ImageNet 256 <b>1-NFE FID 1.72</b></span></div>
+    <div class="tagrow"><span>Eulerian (E)</span><span>v-loss</span><span>辅助速度头</span><span>引导作为条件</span></div>
+  </div>
+  <aside class="aside"><p>论文称 MeanFlow 这类模型为 fastforward（快进）生成模型：它们近似的是 ODE 的"快进"版本。</p></aside>
+</header>
+
+<section>
+  <div class="row">
+    <div class="main">
+      <h2><span class="num">1</span>问题一：目标里含网络自身</h2>
+      <p>MeanFlow 的目标是 \(u_{\text{tgt}}=v-(t-r)\frac{\mathrm d u_\theta}{\mathrm dt}\)。表面上是回归，但回归目标随网络在变，不像标准的监督学习。iMF 的做法是把网络项移到预测一侧。由恒等式 \(v=u+(t-r)\frac{\mathrm du}{\mathrm dt}\)，定义复合预测：</p>
+      <div class="display result">$$V_\theta\triangleq u_\theta+(t-r)\cdot\mathrm{JVP}_{\text{sg}},\qquad \mathcal L=\mathbb E\,\big\|V_\theta-v\big\|^2,\quad v=\epsilon-x. \tag{1}\label{eq:vloss}$$</div>
+      <p>现在回归目标 \(v\) 是固定的数据量，网络只出现在预测一侧，成了标准回归，论文称之为"\(v\)-loss"。可以把它理解为：<b>网络输出平均速度 \(u\)，经过恒等式换算成瞬时速度 \(V\)，再和 flow matching 一样去回归</b>。</p>
+
+      <h3>切向量用谁的速度</h3>
+      <p>JVP 仍需要一个切向量（沿 \(z\) 方向的速度）。iMF 比较了两种确定性的选择，都不再用带噪的条件速度：</p>
+      <ul class="plain">
+        <li>用 \(u_\theta\) 的边界条件：\(v_\theta=u_\theta(z_t,t,t)\)；</li>
+        <li>用一个辅助速度头单独输出 \(v_\theta\)。</li>
+      </ul>
+      <div class="tablewrap"><table class="cmp">
+        <thead><tr><th>1-NFE FID（消融设置）</th><th>无 CFG</th><th>有 CFG</th></tr></thead>
+        <tbody>
+          <tr><td>原始 MF</td><td>32.69</td><td>6.17</td></tr>
+          <tr><td>\(v\)-loss，\(v_\theta=u_\theta(z_t,t,t)\)</td><td>29.42</td><td>5.97</td></tr>
+          <tr><td>\(v\)-loss，\(v_\theta\) 来自辅助头</td><td>30.76</td><td>5.68</td></tr>
+        </tbody>
+      </table></div>
+
+      <figure class="lab" data-lab="tangent" data-beta="1">
+        <figcaption>切向量从"带噪的条件速度"（β=0）换成"确定性的速度估计"（β=1）后，热力图里的高噪声区域消失。iMF 的辅助速度头大致对应 β=1。第 9 讲会更细地分析这个实验。</figcaption>
+      </figure>
+    </div>
+    <aside class="aside">
+      <p>"sg" 表示对 JVP 那一项做 stop-gradient：梯度只经过 \(u_\theta\) 本身。</p>
+      <p>第 9 讲的理论把辅助速度头解释为"控制变量"：用确定性的估计替换掉切向量里的噪声。</p>
+    </aside>
+  </div>
+</section>
+
+<section>
+  <div class="row">
+    <div class="main">
+      <h2><span class="num">2</span>问题二：引导强度写死</h2>
+      <p>原始 MF 用固定的 \(v_{\text{cfg}}(z_t\mid c)=\omega\,v(z_t\mid c)+(1-\omega)\,v(z_t)\) 作目标，\(\omega\) 训练前就选定，推理时不能改。iMF 发现最优 \(\omega\) 会随设置变化：越强的模型（更大、训练更久、步数更多）偏好越小的 \(\omega\)。</p>
+      <p>做法是把引导相关的量 \(\Omega\)（如引导强度）当作和 \(t\)、\(r\) 一样的条件输入：</p>
+      <div class="display">$$u_\theta=u_\theta\big(z_t\mid r,\,t,\,c,\,\Omega\big), \tag{2}$$</div>
+      <p>训练时随机采样 \(\Omega\)，推理时任意设定。</p>
+
+      <h3>in-context 条件化</h3>
+      <p>条件一多（\(r\)、\(t\)、类别、\(\Omega\)），adaLN-zero 把所有条件嵌入相加，单个操作负担过重。iMF 改为每种条件用多个可学习 token（类别 8 个，其它各 4 个），与图像 token 拼接后一起送进 Transformer。DiT 当年发现 in-context 不如 adaLN-zero，iMF 发现多 token 就能补上差距，还减少了参数。</p>
+    </div>
+    <aside class="aside"><p>作者在结论里提到：一步生成足够快以后，VAE 解码本身的代价变得不可忽略。这直接引出了下一讲的 pMF。</p></aside>
+  </div>
+</section>
+
+<section class="row">
+  <div class="main summary">
+    <h2>小结</h2>
+    <ol>
+      <li><span>\(v\)-loss：网络输出 \(u\)，经恒等式换算成 \(V\)，回归固定的 \(v\)，变成标准回归。</span></li>
+      <li><span>切向量改用确定性的速度估计（边界条件或辅助头），去掉了带噪的条件速度。</span></li>
+      <li><span>引导强度作为条件输入，配合多 token in-context 条件化；从头训练 1-NFE FID 1.72。</span></li>
+    </ol>
+  </div>
+  <aside class="aside"></aside>
+</section>

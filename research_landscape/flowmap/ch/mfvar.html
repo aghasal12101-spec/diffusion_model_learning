@@ -1,0 +1,79 @@
+<header class="row cover">
+  <div class="main">
+    <p class="eyebrow">第 9 讲 · 修补 MeanFlow · 2026</p>
+    <h1>MeanFlow 方差削减：<em>条件速度的两个角色</em></h1>
+    <p class="lede">MeanFlow 训练时损失不降、梯度方差无界。这篇论文给出统计解释：条件速度在损失里同时扮演"回归目标"和"JVP 切向量"，后一个角色的系数取错了。由此导出最优混合系数，并把同期的各种补救方法统一起来。</p>
+    <div class="byline"><span>arXiv <b><a href="https://arxiv.org/abs/2605.09235" target="_blank" rel="noopener">2605.09235</a></b></span><span>实验 <b>2D 基准 + 潜空间 DiT</b></span></div>
+    <div class="tagrow"><span>理论分析</span><span>控制变量</span><span>偏差–方差</span></div>
+  </div>
+  <aside class="aside"><p>这一讲的实验最值得花时间玩：它直接展示了"无界方差"长什么样。</p></aside>
+</header>
+
+<section>
+  <div class="row">
+    <div class="main">
+      <h2><span class="num">1</span>把噪声拆出来</h2>
+      <p>把条件速度写成边缘速度加零均值噪声：\(v_{\text{cond}}=v(z,t)+v'\)，\(\mathbb E[v'\mid z_t]=0\)，协方差 \(\Sigma_{v'}\)。MeanFlow 损失里 \(v_{\text{cond}}\) 出现两次：作为回归目标，以及作为 JVP 切向量。代入后取条件期望：</p>
+      <div class="display result">$$\mathbb E\big[\ell_{\text{MF}}\big]=\big\|r^{\text{sg}}_\theta\big\|^2+\mathrm{sg}\big[\mathrm{Tr}\big(\class{tb}{J}\,\Sigma_{v'}\,\class{tb}{J}^\top\big)\big],\qquad J=(t-r)\,\partial_{z}u_\theta-I. \tag{1}\label{eq:decomp}$$</div>
+      <p>第一项是真正想最小化的残差；第二项来自噪声。两个角色的区别：</p>
+      <ul class="plain">
+        <li><b>作为回归目标</b>：噪声以加性方式进入，贡献一个与参数无关的噪声底，无害；</li>
+        <li><b>作为切向量</b>：噪声经过 <span class="hl-b">Jacobian 因子 \(J\)</span> 乘性放大，贡献 \(\mathrm{Tr}(J\Sigma J^\top)\)，随 \(J\) 的谱无界增长。损失不降、梯度方差大，主要来自这里。</li>
+      </ul>
+      <p>对真实平均速度有 \((t-r)\partial_z u=I-\nabla_z X_{t\to r}\)，所以 \(J=-\nabla_z X_{t\to r}\)：<b>噪声被放大多少，取决于流映射把空间拉伸了多少</b>。流映射在不同模式的分界处拉伸最厉害，那里的噪声也最大。</p>
+    </div>
+    <aside class="aside"><p>式 (1) 里的 \(r^{\text{sg}}_\theta=u_\theta+(t-r)\,\mathrm{sg}[\partial_zu_\theta\,v+\partial_tu_\theta]-v\)，是用真实边缘速度时的残差。</p></aside>
+  </div>
+</section>
+
+<section>
+  <div class="row">
+    <div class="main">
+      <h2><span class="num">2</span>切向量混合与最优系数</h2>
+      <p>把切向量换成条件速度与一个确定性代理 \(\hat v\)（例如速度网络）的混合：</p>
+      <div class="display">$$\tilde v_{\text{tang}}(\beta)=(1-\beta)\,v_{\text{cond}}+\beta\,\hat v=v+(1-\beta)\,v'+\beta\,b, \tag{2}$$</div>
+      <p>其中 \(b=\hat v-v\) 是代理的偏差。\(\beta=0\) 是原始 MeanFlow，\(\beta=1\) 完全用代理。单样本梯度里，噪声项按 \(\big((1-\beta)J-\beta I\big)v'\) 缩放，偏差项按 \(\beta(J+I)b\) 缩放，于是有偏差–方差权衡，在各向同性近似下最优 \(\beta^\ast\) 有闭式解。</p>
+
+      <figure class="lab" data-lab="tangent" data-beta="0">
+        <figcaption>颜色是每个位置上目标噪声的大小 \(\mathrm{Tr}(A\Sigma A^\top)\)，\(A=\beta I+(1-\beta)\nabla_zX_{t\to r}\)（这里代理取真实速度，偏差为 0）。β=0 时<b>大部分位置噪声不大，但模式分界处有极端的热点</b>：中位数很小、均值和最大值却很大，这就是"无界方差"。跨度 Δ 越大，热点越强。</figcaption>
+      </figure>
+
+      <h3>统一同期的补救方法</h3>
+      <ul class="plain">
+        <li><b>iMF</b>：用学到的边缘速度头代替切向量，相当于 \(\beta=1\) 的一种实现；</li>
+        <li><b>AlphaFlow</b>：把慢收敛归因于 FM 项与一致性项的梯度冲突，用 \(\alpha\) 课程；</li>
+        <li><b>Re-MeanFlow</b>：先用 rectified flow 拉直数据，降低轨迹曲率；</li>
+        <li><b>TVM</b>：对终点时间求导，绕开空间 Jacobian。</li>
+      </ul>
+      <p>作者说明这些都对应同一个最优点的不同实现。</p>
+    </div>
+    <aside class="aside"><p>实验中代理取真实速度（偏差为 0），所以 β=1 时只剩回归目标本身的噪声底 \(\mathrm{Tr}\,\Sigma\)。真实训练中代理有偏差，β 不能直接取 1。</p></aside>
+  </div>
+</section>
+
+<section>
+  <div class="row">
+    <div class="main">
+      <h2><span class="num">3</span>出人意料的结论</h2>
+      <p>在二维基准和潜空间 DiT 上扫描 \(\beta\)，梯度均方误差的排序和理论预测一致。但 DiT 实验揭示了一个"景观错配"：</p>
+      <ul class="plain">
+        <li>梯度 MSE 在 \(\beta\approx0.94\) 时最小；</li>
+        <li>FID 最好的却是 \(\beta=0\)，即直接用无偏的条件速度。</li>
+      </ul>
+      <p>FID 对偏差的惩罚比梯度 MSE 强得多，大约是 2.6 倍的超线性放大，于是 FID 最优点越过了 MSE 最优点，一直移到无偏端。<b>方差最优不等于生成质量最优。</b>这也提醒我们：iMF 的辅助头之所以有效，可能不只是因为降了方差。</p>
+    </div>
+    <aside class="aside"><p>这个结论和第 11 讲 TE-MeanFlow 的思路互补：与其消掉噪声，不如在不同时间尺度之间均衡噪声。</p></aside>
+  </div>
+</section>
+
+<section class="row">
+  <div class="main summary">
+    <h2>小结</h2>
+    <ol>
+      <li><span>条件速度作为回归目标无害，作为 JVP 切向量会被 \(J=-\nabla_zX_{t\to r}\) 乘性放大。</span></li>
+      <li><span>切向量混合系数 \(\beta\) 带来偏差–方差权衡，最优值有闭式解；iMF、AlphaFlow、TVM 等都是它的不同实现。</span></li>
+      <li><span>梯度方差最优（\(\beta\approx0.94\)）不等于 FID 最优（\(\beta=0\)）。</span></li>
+    </ol>
+  </div>
+  <aside class="aside"></aside>
+</section>

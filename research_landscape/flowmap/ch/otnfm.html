@@ -1,0 +1,60 @@
+<header class="row cover">
+  <div class="main">
+    <p class="eyebrow">第 15 讲 · 扩展 · 2026</p>
+    <h1>OT-NFM：<em>耦合决定能不能直接回归</em></h1>
+    <p class="lede">直接用神经流参数化流映射、直接回归插值点，会塌缩到数据均值。论文证明一致的耦合是避免塌缩的必要条件，于是用最优传输配对噪声和数据，实现无 ODE 的一步生成。</p>
+    <div class="byline"><span>arXiv <b><a href="https://arxiv.org/abs/2604.06413" target="_blank" rel="noopener">2604.06413</a></b></span><span>实验 <b>合成数据、MNIST、CIFAR-10</b></span></div>
+    <div class="tagrow"><span>直接回归</span><span>OT 耦合</span><span>神经流</span></div>
+  </div>
+  <aside class="aside"><p><b>原文记号</b></p><p>\(x_0\sim p_0\) 为噪声，\(x_1\sim p_1\) 为数据；流映射 \(F_\theta(t,x_0)\) 满足 \(F_\theta(0,x_0)=x_0\)。</p></aside>
+</header>
+
+<section>
+  <div class="row">
+    <div class="main">
+      <h2><span class="num">1</span>朴素做法为什么塌缩</h2>
+      <p>神经流直接参数化映射本身。最朴素的训练是独立采样噪声和数据，回归插值点：</p>
+      <div class="display">$$\mathcal L_{\text{naive}}=\mathbb E_{x_0\sim p_0,\,x_1\sim p_1,\,t}\big\|F_\theta(t,x_0)-x_t\big\|^2,\qquad x_t=(1-t)x_0+tx_1. \tag{1}$$</div>
+      <div class="thm">
+        <div class="thm-label">定理 1 <i>（均值坍缩）</i></div>
+        <p>独立耦合 \(\pi=p_0\times p_1\) 下，唯一的最优解是</p>
+        <div class="display">$$F_{\theta^\ast}(t,x_0)=(1-t)\,x_0+t\,\mathbb E_{p_1}[x_1],$$</div>
+        <p>特别地 \(F_{\theta^\ast}(1,x_0)=\mathbb E[x_1]\)：所有生成样本都塌到数据均值。</p>
+      </div>
+      <p>这和导论第 2 节是同一件事：平方损失的最优解是条件期望，而独立耦合下 \(x_1\) 与 \(x_0\) 无关。速度可以这样学（条件期望恰好是边缘速度），映射不行。</p>
+    </div>
+    <aside class="aside"><p>这也解释了为什么 flow matching 可以用独立耦合：它学的是条件期望意义下的速度，而不是映射。</p></aside>
+  </div>
+</section>
+
+<section>
+  <div class="row">
+    <div class="main">
+      <h2><span class="num">2</span>一致的耦合</h2>
+      <p>要让直接回归有意义，每个噪声 \(x_0\) 必须对应确定的一个数据点：耦合要"一致"（确定性）。作者证明这是非退化学习的<b>必要条件</b>，并采用最优传输配对：二次代价下的 OT 耦合是确定性的单调映射。实际中全局 OT 太贵，论文给出可扩展的小批量 OT 和在线耦合策略。</p>
+
+      <figure class="lab" data-lab="coupling">
+        <figcaption>一维例子：噪声是标准正态，数据是两个高斯团。把"噪声 → 配对数据"直接做非参数回归（相当于理想网络）。<b>独立耦合</b>下输出全部塌到 0；<b>小批量 OT</b> 下批越大，配对越接近全局 OT（一维时就是按分位数配对），输出分布越接近数据。</figcaption>
+      </figure>
+
+      <h3>结果与局限</h3>
+      <p>在合成数据、MNIST、CIFAR-10 上取得有竞争力的样本质量，推理只需一次前向。实验规模较小；OT 配对在高维、大数据集上的偏差和代价，是这条路线要回答的问题。</p>
+    </div>
+    <aside class="aside">
+      <p>和 Rectified Flow 对照：ReFlow 用模型自己生成的配对重新训练，让耦合越来越一致、轨迹越来越直；OT-NFM 直接用 OT 给出一致的耦合。</p>
+      <p>离散数据的 Coupling Models 也持同样的观点："一步生成的效果很大程度上取决于解码前数据与噪声如何耦合。"</p>
+    </aside>
+  </div>
+</section>
+
+<section class="row">
+  <div class="main summary">
+    <h2>小结</h2>
+    <ol>
+      <li><span>独立耦合下直接回归映射，最优解是数据均值。</span></li>
+      <li><span>一致（确定性）的耦合是非退化学习的必要条件；用小批量 OT 实现。</span></li>
+      <li><span>这是另一条路：不靠流映射的方程，而靠改耦合，让直接回归重新可行。</span></li>
+    </ol>
+  </div>
+  <aside class="aside"></aside>
+</section>

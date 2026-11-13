@@ -1,0 +1,84 @@
+<header class="row cover">
+  <div class="main">
+    <p class="eyebrow">第 4 讲 · 奠基 · 2025</p>
+    <h1>自蒸馏框架：<em>三类方程的统一与比较</em></h1>
+    <p class="lede">"How to build a consistency model" 把从头训练流映射写成一个通用配方：对角线学速度，非对角线满足三个方程之一。它统一了 CM、Shortcut、MeanFlow，并且在相同条件下比较了三类方法，结论是 Lagrangian 型最好。</p>
+    <div class="byline"><span>作者 <b>Boffi, Albergo, Vanden-Eijnden</b></span><span>arXiv <b><a href="https://arxiv.org/abs/2505.18825" target="_blank" rel="noopener">2505.18825</a></b></span></div>
+    <div class="tagrow"><span>框架</span><span>LSD / ESD / PSD</span><span>从头训练</span></div>
+  </div>
+  <aside class="aside"><p><b>原文记号</b></p><p>同第 1 讲：\(t=0\) 为基分布、\(t=1\) 为数据，\(X_{s,t}(x)=x+(t-s)v_{s,t}(x)\)，\(0\le s\le t\le1\)。</p></aside>
+</header>
+
+<section>
+  <div class="row">
+    <div class="main">
+      <h2><span class="num">1</span>配方</h2>
+      <p>关键观察：\(\lim_{s\to t}v_{s,t}=b_t\)，所以对角线 \(v_{t,t}\) 就是速度场，可以用 flow matching 直接从数据学：</p>
+      <div class="display">$$\mathcal L_b(\hat v)=\int_0^1\mathbb E_{x_0,x_1}\big|\hat v_{t,t}(I_t)-\dot I_t\big|^2\,\mathrm dt. \tag{1}\label{eq:sd-b}$$</div>
+      <p>非对角线再加上三个刻画之一的残差。方程里需要的速度，用网络自己的对角线 \(\hat v_{t,t}\) 代替：<b>老师就是学生自己</b>。</p>
+      <div class="display">$$\mathcal L_{\text{SD}}=\mathcal L_b+\mathcal L_{\text D},\qquad \mathcal L_{\text D}\in\{\mathcal L_{\text{LSD}},\ \mathcal L_{\text{ESD}},\ \mathcal L_{\text{PSD}}\}. \tag{2}$$</div>
+    </div>
+    <aside class="aside"><p>"自蒸馏"这个词就来自这里：蒸馏损失和第 1 讲相同，只是老师换成了网络自己的对角线。</p></aside>
+  </div>
+</section>
+
+<section>
+  <div class="row">
+    <div class="main">
+      <h2><span class="num">2</span>三个自蒸馏目标</h2>
+      <div class="display">$$\mathcal L_{\text{LSD}}=\iint\mathbb E\,\Big|\partial_t\hat X_{s,t}(I_s)-\hat v_{t,t}\big(\hat X_{s,t}(I_s)\big)\Big|^2 \tag{3}\label{eq:lsd}$$</div>
+      <div class="display">$$\mathcal L_{\text{ESD}}=\iint\mathbb E\,\Big|\partial_s\hat X_{s,t}(I_s)+\nabla\hat X_{s,t}(I_s)\,\hat v_{s,s}(I_s)\Big|^2 \tag{4}\label{eq:esd}$$</div>
+      <div class="display">$$\mathcal L_{\text{PSD}}=\iiint\mathbb E\,\Big|\hat X_{s,t}(I_s)-\hat X_{u,t}\big(\hat X_{s,u}(I_s)\big)\Big|^2 \tag{5}\label{eq:psd}$$</div>
+      <p>三者需要的计算不同，这决定了它们的稳定性：</p>
+      <div class="tablewrap"><table class="cmp">
+        <thead><tr><th>目标</th><th>空间导数</th><th>时间导数</th><th>从小步自举</th><th>理论保证</th></tr></thead>
+        <tbody>
+          <tr><td>LSD（Lagrangian）</td><td>无</td><td>1 个</td><td>否</td><td>有</td></tr>
+          <tr><td>ESD（Eulerian）</td><td>有（\(\nabla\hat X\)）</td><td>1 个</td><td>否</td><td>有</td></tr>
+          <tr><td>PSD（Progressive）</td><td>无</td><td>无</td><td>是</td><td>作者没能证明</td></tr>
+        </tbody>
+      </table></div>
+      <p>作者在附录里说明了，PSD 的保证之所以难以得到，是因为"从小步自举到大步"带来误差累积和分布偏移，他们认为这是这类算法构造上的根本困难。</p>
+
+      <figure class="lab" data-lab="equations" data-preset="lag">
+        <figcaption>三种模式分别对应 LSD、ESD、PSD 所约束的关系。实际训练中，方程里的速度和终点都是网络自己的估计。</figcaption>
+      </figure>
+    </div>
+    <aside class="aside">
+      <p>"空间导数"指 \(\nabla_x\hat X\)。它需要沿一个 \(d\) 维方向做 JVP，而且方向里带着速度的估计；时间导数只是沿一个标量方向。</p>
+    </aside>
+  </div>
+</section>
+
+<section>
+  <div class="row">
+    <div class="main">
+      <h2><span class="num">3</span>统一已有方法</h2>
+      <ul class="plain">
+        <li><b>一致性模型（CT/sCM）</b>：只学 \(X_{s,1}\) 这一列，属于 Eulerian 型（起点沿轨迹动、终点不变）。</li>
+        <li><b>MeanFlow</b>：恒等式里含 \(v\,\partial_z u\)，是 ESD 的平均速度形式。</li>
+        <li><b>Shortcut</b>：两小步等于一大步，是 PSD。</li>
+        <li><b>TVM</b>（第 6 讲）：在终点处匹配速度，思想上最接近 LSD。</li>
+      </ul>
+
+      <h3>实验</h3>
+      <p>在棋盘格、CIFAR-10、CelebA-64、AFHQ-64 上，按目标中空间导数与时间导数的个数分析各方法。结论：<b>LSD 在所有基准上最好</b>，因为它既不需要空间导数，也不依赖小步自举。例如 CelebA-64 上，LSD 的 FID 从 1 步的 12.22 降到 16 步的 1.96；PSD 与 LSD 的差距在 CelebA-64 低步数时最明显。</p>
+      <p>论文还讨论了时间采样、损失权重、PSD 的采样与缩放方式，以及条件生成和引导的接入。</p>
+    </div>
+    <aside class="aside">
+      <p>同期的 AYF（第 5 讲）在蒸馏设定下得到了不完全相同的结论：Lagrangian 在二维更稳，但在图像上会过度平滑。两者结合起来看更全面。</p>
+    </aside>
+  </div>
+</section>
+
+<section class="row">
+  <div class="main summary">
+    <h2>小结</h2>
+    <ol>
+      <li><span>配方：对角线用 flow matching 学速度，非对角线满足一个方程，速度用网络自己的对角线代替。</span></li>
+      <li><span>三类目标的差别在于：要不要空间导数、要不要从小步自举。</span></li>
+      <li><span>实验结论：避开这两者的 LSD 最稳最好。这给"为什么 TVM 有效"提供了框架层面的解释。</span></li>
+    </ol>
+  </div>
+  <aside class="aside"></aside>
+</section>

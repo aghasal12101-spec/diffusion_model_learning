@@ -810,7 +810,7 @@ const BRANCHES = [
     id: "b-flowmap", code: "分支 2", name: "Flow map 与平均速度", train: "scratch",
     core: "u(z<sub>t</sub>, r, t) = 1/(t−r) ∫<sub>r</sub><sup>t</sup> v(z<sub>τ</sub>, τ) dτ　⇒　u = v − (t−r) · d u / dt",
     idea: "不再只学 t→0 的映射，而是学任意两个时间之间的跳跃 X<sub>s→t</sub>。这样一个网络同时支持一步和多步采样。核心技巧是用 flow map 自身满足的微分恒等式构造训练目标，从而不需要外部老师（自蒸馏）。",
-    learned: "你学过 FMM 和 MeanFlow。这是你最容易出成果的分支。建议读 Boffi 等的 <b>Eulerian / Lagrangian / Progressive</b> 三分类，它能把 MeanFlow、Shortcut、TVM 放进同一框架。",
+    learned: "你学过 FMM 和 MeanFlow。这是你最容易出成果的分支。建议读 Boffi 等的 <b>Eulerian / Lagrangian / Progressive</b> 三分类，它能把 MeanFlow、Shortcut、TVM 放进同一框架。<br><a href=\"https://claude.ai/artifact/PTpfwyMFCDrk6fJYYKxEuh\" target=\"_blank\" rel=\"noopener\">打开这个分支的逐篇精读讲义（含交互实验）→</a>",
     open: ["JVP 带来的方差和显存开销", "一步 FID 已被分布层面方法超过", "条件生成与引导存在 guidance gap"]
   },
   {

@@ -1,0 +1,81 @@
+<header class="row cover">
+  <div class="main">
+    <p class="eyebrow">第 5 讲 · 奠基 · NeurIPS 2025</p>
+    <h1>Align Your Flow：<em>可扩展的流映射蒸馏</em></h1>
+    <p class="lede">先证明一致性模型在多步采样时必然退化，再给出两个连续时间的流映射蒸馏目标（Eulerian 与 Lagrangian），加上 autoguidance 和短暂的对抗微调，在 ImageNet 和 FLUX.1 上蒸馏出少步与多步都好用的模型。</p>
+    <div class="byline"><span>作者 <b>Sabour, Fidler, Kreis</b>（NVIDIA）</span><span>arXiv <b><a href="https://arxiv.org/abs/2506.14603" target="_blank" rel="noopener">2506.14603</a></b></span></div>
+    <div class="tagrow"><span>蒸馏</span><span>Eulerian / Lagrangian</span><span>Autoguidance</span></div>
+  </div>
+  <aside class="aside"><p>和第 4 讲的区别：这里方程里的速度来自<b>预训练老师</b> \(v_\phi\)，而不是网络自己。</p></aside>
+</header>
+
+<section>
+  <div class="row">
+    <div class="main">
+      <h2><span class="num">1</span>一致性模型为什么不适合多步</h2>
+      <p>CM 的多步采样是"一步去噪到 \(x_0\)，再加噪到较小的时间，再去噪"。实践中步数一多，质量反而下降，大多数论文只报 1 到 2 步。</p>
+      <div class="thm">
+        <div class="thm-label">定理 <i>（CM 多步采样必然退化）</i></div>
+        <p>数据为 \(\mathcal N(0,c^2I)\)。对任意 \(\delta>0\)，存在一个与最优 CM 的误差处处小于 \(\delta\) 的次优 CM，以及某个步数 \(N\)，使得步数超过 \(N\) 之后，生成分布与真实分布的 \(W_2\) 距离反而增大。</p>
+      </div>
+      <p>原因是每次"跳到终点再加噪"都把误差注入下一步，而 CM 的设计里没有任何东西能纠正它。\(c=0.5\)（常见的数据标准差）时，最优步数恰好是 2 步，与文献中的经验一致。流映射直接从 \(t\) 跳到 \(s\)，不经过终点，所以没有这个问题。</p>
+    </div>
+    <aside class="aside"><p>这条定理解释了为什么"少步"方法应该学 \(X_{t\to s}\) 而不是只学 \(X_{t\to0}\)。</p></aside>
+  </div>
+</section>
+
+<section>
+  <div class="row">
+    <div class="main">
+      <h2><span class="num">2</span>两个连续时间蒸馏目标</h2>
+      <p>参数化 \(f_\theta(x_t,t,s)=x_t+(s-t)F_\theta(x_t,t,s)\)，老师给出 PF-ODE \(\mathrm dx_t/\mathrm dt=v_\phi(x_t,t)\)。</p>
+
+      <h3>AYF-EMD（Eulerian）</h3>
+      <p>固定终点 \(s\)，让起点沿老师的 ODE 移动一小步 \(t'=t+\epsilon(s-t)\)（用一步 Euler 得到 \(x_{t'}\)），要求输出不变：</p>
+      <div class="display">$$\mathbb E\big[w(t,s)\,\|f_\theta(x_t,t,s)-f_{\theta^-}(x_{t'},t',s)\|^2\big]. \tag{1}$$</div>
+      <p>\(\epsilon\to0\) 时梯度收敛到</p>
+      <div class="display">$$\nabla_\theta\,\mathbb E\Big[w'(t,s)\,\mathrm{sign}(t-s)\,f_\theta^\top\,\frac{\mathrm d f_{\theta^-}(x_t,t,s)}{\mathrm dt}\Big]. \tag{2}\label{eq:ayf-emd}$$</div>
+      <p>\(s=0\) 时就是连续时间一致性模型（sCM）的目标；\(s\to t\) 时退化为 flow matching。</p>
+
+      <h3>AYF-LMD（Lagrangian）</h3>
+      <p>固定起点，让终点从 \(s'=s+\epsilon(t-s)\) 沿老师的 ODE 走一小步到 \(s\)：</p>
+      <div class="display">$$\mathbb E\big[w(t,s)\,\|f_\theta(x_t,t,s)-\mathrm{ODE}_{s'\to s}[f_{\theta^-}(x_t,t,s')]\|^2\big], \tag{3}$$</div>
+      <div class="display">$$\nabla_\theta\,\mathbb E\Big[w'(t,s)\,\mathrm{sign}(s-t)\,f_\theta^\top\Big(\frac{\mathrm d f_{\theta^-}}{\mathrm ds}-v_\phi\big(f_{\theta^-}(x_t,t,s),s\big)\Big)\Big]. \tag{4}\label{eq:ayf-lmd}$$</div>
+      <p>括号里正是 Lagrangian 方程的残差。</p>
+
+      <p><b>一个值得注意的发现</b>：二维玩具实验里 LMD 更稳定，但在图像上会生成过度平滑的样本，质量明显下降，所以图像实验用的是 EMD。这与第 4 讲"LSD 最好"的结论并不矛盾：一个是自蒸馏、一个是蒸馏，设定不同；它提醒我们，方程的选择没有放之四海皆准的答案。</p>
+    </div>
+    <aside class="aside">
+      <p>\(w'(t,s)=w(t,s)\,|t-s|\)。</p>
+      <p>梯度形式 \(f^\top\,\mathrm df^-/\mathrm dt\) 和 sCM 的写法一样，实际实现时写成一个代理损失，使其梯度等于这个极限。</p>
+    </aside>
+  </div>
+</section>
+
+<section>
+  <div class="row">
+    <div class="main">
+      <h2><span class="num">3</span>让结果更锐利：autoguidance 与对抗微调</h2>
+      <p>扩散模型通常靠 CFG 提升质量，但 CFG 会降低多样性、导致过饱和。AYF 在蒸馏时改用 <b>autoguidance</b>：用一个更弱的模型来引导老师，作为蒸馏目标。最后再做一段<b>短暂的对抗微调</b>，进一步提升锐度，同时尽量保住多样性。</p>
+      <h3>结果</h3>
+      <ul class="plain">
+        <li>ImageNet 64×64 与 512×512 上，在少步生成中取得当时同类最好的结果，而且网络小、效率高：4 步采样的速度和其它工作的 1 步相当甚至更快。</li>
+        <li>对抗微调后的多样性明显高于其它对抗训练方法。</li>
+        <li>用 LoRA 蒸馏 FLUX.1，得到的文生图流映射模型优于所有非对抗训练的少步采样器。</li>
+      </ul>
+    </div>
+    <aside class="aside"><p>和 TVM、MeanFlow 不同，AYF 需要一个强老师；它的优势在于规模化和多步质量不退化。</p></aside>
+  </div>
+</section>
+
+<section class="row">
+  <div class="main summary">
+    <h2>小结</h2>
+    <ol>
+      <li><span>理论：CM 的多步采样会累积误差，流映射没有这个问题。</span></li>
+      <li><span>两个蒸馏目标：EMD 推广了 sCM 与 flow matching，LMD 对应 Lagrangian 残差；图像上 EMD 更好。</span></li>
+      <li><span>autoguidance + 短暂对抗微调，规模化到 FLUX.1。</span></li>
+    </ol>
+  </div>
+  <aside class="aside"></aside>
+</section>

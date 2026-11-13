@@ -1,0 +1,95 @@
+<header class="row cover">
+  <div class="main">
+    <p class="eyebrow">第 12 讲 · 去掉 JVP · 2025</p>
+    <h1>SoFlow：<em>用有限差分代替 JVP</em></h1>
+    <p class="lede">直接学 ODE 的"解函数"，用一个不需要 JVP 的解一致性损失加 flow matching 损失训练。在相同 DiT 架构和训练轮数下，各个模型尺寸都优于 MeanFlow。</p>
+    <div class="byline"><span>arXiv <b><a href="https://arxiv.org/abs/2512.15657" target="_blank" rel="noopener">2512.15657</a></b></span><span>ImageNet 256 <b>XL/2 1-NFE FID 2.96</b></span></div>
+    <div class="tagrow"><span>Eulerian (E)</span><span>有限差分</span><span>无 JVP</span><span>从头训练</span></div>
+  </div>
+  <aside class="aside"><p><b>原文记号</b></p><p>\(x_t=\alpha_tx_0+\beta_tx_1\)，\(x_0\) 为数据、\(x_1\) 为噪声；解函数 \(f(x_t,t,s)\) 从 \(t\) 到 \(s\le t\)。和讲义统一记号的方向一致。</p></aside>
+</header>
+
+<section>
+  <div class="row">
+    <div class="main">
+      <h2><span class="num">1</span>为什么要去掉 JVP</h2>
+      <p>MeanFlow 一类方法每一步都要一次 JVP。PyTorch 对 JVP 的支持不好，尤其是注意力层，显存和速度代价都高；sCM、TVM、FACM 都专门写了 JVP 核才能扩展。另外，训练中需要一个速度估计用于 CFG。SoFlow 想同时解决这两件事。</p>
+    </div>
+    <aside class="aside"></aside>
+  </div>
+</section>
+
+<section>
+  <div class="row">
+    <div class="main">
+      <h2><span class="num">2</span>解函数的两个充分条件</h2>
+      <p>假设速度场连续可微且关于 \(x\) 全局 Lipschitz，由 ODE 解的存在唯一性，解函数 \(f(x_t,t,s)\) 唯一，并满足</p>
+      <div class="display">$$f(x_t,t,t)=x_t,\qquad \partial_3 f(x_t,t,s)=v\big(f(x_t,t,s),s\big). \tag{1}$$</div>
+      <p>作者证明，模型只要满足下面两个条件就等于真实解函数：</p>
+      <div class="display result">$$f_\theta(x_t,t,t)=x_t,\qquad \partial_1 f_\theta(x_t,t,s)\,v(x_t,t)+\partial_2 f_\theta(x_t,t,s)=0. \tag{2}\label{eq:so-cond}$$</div>
+      <details>
+        <summary>证明思路</summary>
+        <div>
+          <div class="derive">
+            <div class="eq">\(\displaystyle \frac{\partial}{\partial l}f_\theta\big(f(x_t,t,l),l,s\big)=\partial_1f_\theta\cdot v+\partial_2f_\theta=0\)</div>
+            <div class="why">沿真实轨迹移动起点 \(l\)，由式 (2) 第二式</div>
+            <div class="eq">\(\displaystyle f_\theta(x_t,t,s)=f_\theta\big(f(x_t,t,s),s,s\big)\)</div>
+            <div class="why">关于 \(l\) 不变，把 \(l\) 从 \(t\) 移到 \(s\)</div>
+            <div class="eq">\(\displaystyle \phantom{f_\theta(x_t,t,s)}=f(x_t,t,s)\)</div>
+            <div class="why">边界条件 \(f_\theta(\cdot,s,s)=\mathrm{id}\)</div>
+          </div>
+        </div>
+      </details>
+      <p>第二个条件就是 Eulerian 方程：起点沿轨迹移动，终点不变。</p>
+    </div>
+    <aside class="aside"><p>这个证明和导论里 (E) 的推导是同一件事倒过来看。</p></aside>
+  </div>
+</section>
+
+<section>
+  <div class="row">
+    <div class="main">
+      <h2><span class="num">3</span>不用 JVP 的解一致性损失</h2>
+      <p>取 \(l\in(s,t)\) 并靠近 \(t\)，用有限差分近似式 \eqref{eq:so-cond} 里的导数：</p>
+      <div class="display">$$\frac{f_\theta(x_t,t,s)-f_\theta\big(x_t+v(x_t,t)(l-t),\,l,\,s\big)}{t-l}=\partial_1f_\theta\,v+\partial_2f_\theta+o(1). \tag{3}$$</div>
+      <p>于是得到解一致性损失（速度用条件速度代替）：</p>
+      <div class="display result">$$\mathcal L_{\text{SCM}}=\mathbb E\Big[\tfrac{w}{n}\,\big\|f_\theta(x_t,t,s)-f_{\theta^-}\big(x_t+(\alpha_t'x_0+\beta_t'x_1)(l-t),\,l,\,s\big)\big\|^2\Big]. \tag{4}\label{eq:scm}$$</div>
+      <ul class="plain">
+        <li><b>\(l\) 的课程</b>：\(l=t+(s-t)\,r(k,K)\)，\(r\) 随训练步数单调减小，让 \(l\) 逐渐靠近 \(t\)。这和 ECT、sCM 的"逐步收紧"一脉相承：早期差分步长大、目标平滑，后期步长小、更接近真实导数。</li>
+        <li><b>权重</b>：\(w=\frac{1}{(t-l)|b(t,s)|}\cdot\frac{1}{(\text{MSE}/(t-l)^2+\epsilon)^p}\)，前者稳定原始网络的梯度大小，后者是鲁棒损失。</li>
+        <li><b>flow matching 损失</b>：同时训练 \(s=t\) 处的速度，这样训练中就有速度估计可以用于 CFG。</li>
+      </ul>
+
+      <figure class="lab" data-lab="finite">
+        <figcaption>沿二维例子的真实轨迹估计 \(\mathrm du/\mathrm dt\)。<span class="hl-b">截断误差</span>随步长缩小，但网络输出的随机误差会被差分放大约 \(1/h\) 倍，合计误差呈 U 形。网络越准，最优步长越小：这就是 \(l\) 的课程随训练逐渐靠近 \(t\) 的理由。</figcaption>
+      </figure>
+    </div>
+    <aside class="aside"><p>式 (4) 的速度用的仍是条件速度，只是它不再进 JVP，而是进差分的"位移"里。</p></aside>
+  </div>
+</section>
+
+<section>
+  <div class="row">
+    <div class="main">
+      <h2><span class="num">4</span>结果</h2>
+      <div class="tablewrap"><table class="cmp">
+        <thead><tr><th>模型</th><th>MeanFlow 1-NFE</th><th>SoFlow 1-NFE</th></tr></thead>
+        <tbody><tr><td>B/2</td><td>6.17</td><td>4.85</td></tr><tr><td>M/2</td><td>5.01</td><td>3.73</td></tr><tr><td>L/2</td><td>3.84</td><td>3.20</td></tr><tr><td>XL/2</td><td>3.43</td><td>2.96</td></tr></tbody>
+      </table></div>
+      <p>ImageNet 256，FID-50K，相同 DiT 架构与训练轮数。</p>
+    </div>
+    <aside class="aside"></aside>
+  </div>
+</section>
+
+<section class="row">
+  <div class="main summary">
+    <h2>小结</h2>
+    <ol>
+      <li><span>学 ODE 解函数；边界条件 + Eulerian 方程是它的充分条件。</span></li>
+      <li><span>用有限差分代替导数，得到不需要 JVP 的解一致性损失；差分步长按课程逐渐收紧。</span></li>
+      <li><span>同架构同轮数下各尺寸都优于 MeanFlow（XL/2：2.96 vs 3.43）。</span></li>
+    </ol>
+  </div>
+  <aside class="aside"></aside>
+</section>

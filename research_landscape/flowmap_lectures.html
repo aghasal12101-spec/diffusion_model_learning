@@ -1,0 +1,314 @@
+<title>Flow Map 精读讲义</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=Noto+Serif+SC:wght@400;600;700&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* Layout: Marginalia 学术编辑风。左侧固定讲次目录（宽屏），主栏 + 右侧边注栏；实验图放在主栏里 */
+:root {
+  --paper: #f5f5f1;
+  --ink: #1c2027;
+  --muted: #676c76;
+  --rule: #d9d9d1;
+  --block: #ececE6;
+  --accent: #23467a;
+  --term-a: #2659b0;
+  --term-b: #ad4236;
+  --serif: "Source Serif 4", "Noto Serif SC", "Songti SC", "SimSun", Georgia, serif;
+  --serif-cn: "Noto Serif SC", "Source Serif 4", "Songti SC", "SimSun", serif;
+  --sans: "Inter", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --rail: 0px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #14161a; --ink: #e3e3dd; --muted: #989ca5; --rule: #2b2e34;
+    --block: #1b1e23; --accent: #93b2e6; --term-a: #7ea7ee; --term-b: #e88b7e;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #14161a; --ink: #e3e3dd; --muted: #989ca5; --rule: #2b2e34;
+  --block: #1b1e23; --accent: #93b2e6; --term-a: #7ea7ee; --term-b: #e88b7e;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  background: var(--paper); color: var(--ink);
+  font-family: var(--serif); font-size: 18px; line-height: 1.75;
+  -webkit-font-smoothing: antialiased; margin: 0;
+}
+.mono { font-family: var(--sans); font-variant-numeric: tabular-nums; }
+
+/* 进度条 */
+.progress { position: fixed; left: 0; right: 0; top: env(safe-area-inset-top, 0px); height: 2px; z-index: 30; }
+.progress span { display: block; height: 100%; width: 0; background: var(--accent); }
+
+/* 讲次目录 */
+.rail { display: none; }
+.topnav {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: var(--paper);
+  border-bottom: 1px solid var(--rule);
+  padding-block: 10px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; align-items: center; gap: 12px; font-family: var(--sans); font-size: 13px;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 25; background: var(--paper); }
+.topnav b { font-family: var(--serif-cn); font-size: 15px; font-weight: 600; white-space: nowrap; }
+.topnav select { font: inherit; flex: 1; min-width: 0; padding: 6px 8px; border: 1px solid var(--rule); border-radius: 4px; background: var(--paper); color: var(--ink); }
+@media (min-width: 1240px) {
+  :root { --rail: 248px; }
+  .topnav { display: none; }
+  .rail {
+    display: flex; flex-direction: column; position: fixed; z-index: 20;
+    top: env(safe-area-inset-top, 0px); bottom: 0; left: 0; width: var(--rail);
+    padding: 40px 18px 24px max(28px, env(safe-area-inset-left, 0px)); border-right: 1px solid var(--rule);
+    background: var(--paper); overflow-y: auto; font-family: var(--sans);
+  }
+  .rail-title { font-family: var(--serif-cn); font-weight: 700; font-size: 19px; line-height: 1.35; margin-bottom: 6px; }
+  .rail-sub { font-size: 12px; color: var(--muted); line-height: 1.5; margin-bottom: 22px; }
+  .rail-group { font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin: 18px 0 6px; }
+  .rail a { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 2px; padding: 5px 8px; border-left: 2px solid transparent; color: var(--ink); text-decoration: none; font-size: 13.5px; line-height: 1.45; }
+  .rail a .n { font-family: var(--serif); font-style: italic; color: var(--muted); }
+  .rail a:hover { background: var(--block); }
+  .rail a[aria-current="page"] { border-left-color: var(--accent); color: var(--accent); font-weight: 500; }
+  .rail a[aria-current="page"] .n { color: var(--accent); }
+  .rail-foot { margin-top: auto; padding-top: 18px; border-top: 1px solid var(--rule); font-size: 12px; color: var(--muted); line-height: 1.6; }
+  .rail-foot a { display: inline; padding: 0; border: 0; color: var(--accent); font-size: 12px; }
+  body { padding-left: var(--rail); }
+}
+
+.page {
+  max-width: 1040px; margin: 0 auto;
+  padding-block: 64px 96px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.row { display: grid; grid-template-columns: minmax(0, 1fr) 220px; gap: 56px; align-items: start; }
+.main { min-width: 0; }
+.aside { min-width: 0; font-family: var(--sans); font-size: 13px; line-height: 1.6; color: var(--muted); padding-top: 6px; }
+.aside p { margin: 0 0 12px; }
+.aside b { color: var(--ink); font-weight: 600; }
+
+/* 封面 */
+.cover { padding-bottom: 40px; border-bottom: 1px solid var(--rule); margin-bottom: 48px; }
+.eyebrow { font-family: var(--sans); font-size: 12px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); margin: 0 0 20px; }
+h1 { font-family: var(--serif-cn); font-weight: 700; font-size: clamp(32px, 5.4vw, 50px); line-height: 1.2; letter-spacing: -0.01em; margin: 0 0 18px; text-wrap: balance; }
+h1 em { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--accent); }
+.lede { font-size: 20px; color: var(--muted); margin: 0 0 28px; max-width: 34em; }
+.byline { font-family: var(--sans); font-size: 13px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px 22px; }
+.byline b { color: var(--ink); font-weight: 500; }
+.tagrow { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 16px; }
+.tagrow span { font-family: var(--sans); font-size: 12px; padding: 1px 8px; border: 1px solid var(--rule); border-radius: 2px; color: var(--muted); }
+
+/* 章节 */
+section { margin-bottom: 56px; }
+h2 { font-family: var(--serif-cn); font-weight: 600; font-size: 26px; line-height: 1.35; margin: 0 0 18px; text-wrap: balance; display: flex; align-items: baseline; gap: 14px; }
+h2 .num { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--accent); font-size: 22px; }
+h3 { font-family: var(--serif-cn); font-weight: 600; font-size: 19px; margin: 28px 0 10px; }
+p { margin: 0 0 18px; max-width: 36em; }
+ul.plain { margin: 0 0 18px; padding-left: 1.2em; max-width: 36em; }
+ul.plain li { margin-bottom: 6px; }
+
+.thm { border-left: 2px solid var(--accent); padding: 4px 0 4px 22px; margin: 28px 0; }
+.thm.def { background: var(--block); padding: 18px 22px; border-radius: 0 4px 4px 0; }
+.thm-label { font-family: var(--sans); font-size: 12px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); margin-bottom: 6px; }
+.thm-label i { font-family: var(--serif); text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--muted); font-size: 14px; }
+.thm p { margin-bottom: 10px; }
+.thm p:last-child { margin-bottom: 0; }
+.proof { margin: 18px 0 28px; }
+.proof .lead { font-style: italic; color: var(--accent); margin-right: 6px; }
+.qed { float: right; color: var(--ink); }
+
+.display { overflow-x: auto; overflow-y: hidden; margin: 22px 0; padding: 4px 0; }
+mjx-container[display="true"] { margin: 0 !important; }
+mjx-container { font-size: 105% !important; }
+.ta { color: var(--term-a); }
+.tb { color: var(--term-b); }
+.hl-a { color: var(--term-a); font-weight: 600; }
+.hl-b { color: var(--term-b); font-weight: 600; }
+.result { background: var(--block); border-radius: 4px; padding: 10px 18px; }
+
+.derive { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 15em); gap: 14px 28px; align-items: center; margin: 26px 0; padding: 22px 0; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
+.derive .eq { min-width: 0; overflow-x: auto; overflow-y: hidden; }
+.derive .why { font-family: var(--sans); font-size: 13px; color: var(--muted); line-height: 1.5; padding-left: 14px; border-left: 1px solid var(--rule); }
+.derive .why b { color: var(--accent); font-weight: 600; }
+
+details { margin: 8px 0 28px; border: 1px solid var(--rule); border-radius: 4px; }
+summary { cursor: pointer; list-style: none; font-family: var(--sans); font-size: 14px; font-weight: 500; color: var(--accent); padding: 12px 18px; display: flex; align-items: center; gap: 10px; }
+summary::-webkit-details-marker { display: none; }
+summary::before { content: ""; width: 7px; height: 7px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); transition: transform .2s ease; }
+details[open] summary::before { transform: rotate(45deg); }
+details > div { padding: 0 18px 14px; }
+details .derive { margin: 0; border-bottom: 0; padding: 18px 0; }
+
+pre.algo { font-family: var(--sans); font-size: 13.5px; line-height: 1.75; margin: 22px 0; padding: 14px 18px; border-left: 2px solid var(--rule); overflow-x: auto; white-space: pre; color: var(--ink); background: transparent; }
+
+table.cmp { border-collapse: collapse; font-family: var(--sans); font-size: 13.5px; width: 100%; }
+.tablewrap { overflow-x: auto; margin: 22px 0; }
+table.cmp th, table.cmp td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+table.cmp th { font-weight: 600; color: var(--muted); font-size: 12px; letter-spacing: 0.04em; border-bottom-color: var(--ink); }
+table.cmp td { font-variant-numeric: tabular-nums; }
+
+.summary { border-top: 2px solid var(--ink); padding-top: 22px; }
+.summary ol { margin: 0; padding: 0; list-style: none; display: grid; gap: 14px; counter-reset: s; max-width: 36em; }
+.summary li { counter-increment: s; display: grid; grid-template-columns: 2em minmax(0, 1fr); }
+.summary li::before { content: counter(s); font-style: italic; color: var(--accent); font-variant-numeric: tabular-nums; }
+
+a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+summary:focus-visible, button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* 讲次翻页 */
+.pager { margin-top: 64px; padding-top: 20px; border-top: 1px solid var(--rule); display: grid; grid-template-columns: 1fr 1fr; gap: 16px; font-family: var(--sans); }
+.pager a { display: flex; flex-direction: column; gap: 2px; text-decoration: none; color: var(--ink); padding: 8px 0; }
+.pager a span { font-size: 12px; color: var(--muted); letter-spacing: 0.06em; }
+.pager a b { font-family: var(--serif-cn); font-weight: 600; font-size: 17px; }
+.pager a:hover b { color: var(--accent); }
+.pager .next { text-align: right; align-items: flex-end; }
+footer.foot { margin-top: 40px; font-family: var(--sans); font-size: 12px; color: var(--muted); }
+
+/* 实验 */
+figure.lab { margin: 32px 0; padding: 18px 0 16px; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); font-family: var(--sans); }
+.lab-head { margin-bottom: 14px; }
+.lab-label { font-size: 12px; font-weight: 600; letter-spacing: 0.1em; color: var(--accent); }
+.lab-body { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 22px; align-items: start; }
+.lab-plots { min-width: 0; }
+.lab-canvas { display: block; width: 100%; max-width: 100%; height: auto; border-radius: 2px; }
+.lab-twin { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.lab-sub { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+.lab-side { min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+.lab-controls { display: flex; flex-direction: column; gap: 10px; }
+.lab-ctl { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; font-size: 13px; color: var(--muted); }
+.lab-ctl input[type=range] { grid-column: 1 / -1; grid-row: 2; width: 100%; accent-color: var(--accent); margin: 0; }
+.lab-ctl-name { font-size: 13px; color: var(--muted); }
+.lab-ctl-val { color: var(--ink); }
+.lab-seg { display: flex; flex-wrap: wrap; gap: 0; border: 1px solid var(--rule); border-radius: 4px; overflow: hidden; width: fit-content; max-width: 100%; }
+.lab-seg button { font: inherit; font-size: 12.5px; padding: 5px 10px; border: 0; background: transparent; color: var(--ink); cursor: pointer; }
+.lab-seg button + button { border-left: 1px solid var(--rule); }
+.lab-seg button[aria-pressed="true"] { background: var(--accent); color: var(--paper); }
+.lab-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--muted); }
+.lab-key { display: inline-flex; align-items: center; gap: 6px; }
+.lab-sw { width: 9px; height: 9px; border-radius: 50%; background: var(--c); display: inline-block; }
+.lab-sw.ring { background: transparent; border: 1.2px solid var(--c); }
+.lab-sw.line { width: 16px; height: 2px; border-radius: 0; }
+.lab-read { border-top: 1px solid var(--rule); padding-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+.lab-num { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; color: var(--muted); align-items: baseline; }
+.lab-num b { font-size: 16px; font-weight: 600; color: var(--ink); }
+.lab-num b.ta { color: var(--term-a); } .lab-num b.tb { color: var(--term-b); }
+.lab-note, .lab-hint { font-size: 12.5px; line-height: 1.6; color: var(--muted); margin: 4px 0 0; max-width: none; }
+.lab-note b { color: var(--ink); }
+.lab-table { border-collapse: collapse; font-size: 12.5px; width: 100%; }
+.lab-table th, .lab-table td { padding: 4px 6px; border-bottom: 1px solid var(--rule); text-align: right; }
+.lab-table th:first-child { text-align: left; font-weight: 500; color: var(--muted); }
+.lab-table thead th { color: var(--muted); font-weight: 500; }
+figure.lab figcaption { margin-top: 14px; font-size: 13px; line-height: 1.65; color: var(--muted); max-width: 46em; }
+figure.lab figcaption b { color: var(--ink); font-weight: 600; }
+
+.loading { font-family: var(--sans); font-size: 14px; color: var(--muted); padding: 80px 0; }
+
+@media (max-width: 860px) {
+  .row { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .aside { border-left: 1px solid var(--rule); padding: 0 0 0 14px; margin: 4px 0 28px; }
+  .derive { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .derive .why { border-left: 0; padding: 0 0 12px; }
+  .page { padding-block: 40px 80px; }
+  body { font-size: 17px; }
+  .lab-body { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 520px) { .lab-twin { grid-template-columns: minmax(0, 1fr); } .pager { grid-template-columns: minmax(0, 1fr); } .pager .next { text-align: left; align-items: flex-start; } }
+@media (prefers-reduced-motion: reduce) { summary::before { transition: none; } }
+</style>
+
+<div class="progress" aria-hidden="true"><span id="bar"></span></div>
+
+<nav class="rail" id="rail" aria-label="讲次目录">
+  <div class="rail-title">Flow Map 精读讲义</div>
+  <div class="rail-sub">少步生成 · flow map 分支 15 篇论文逐篇精读，配二维实验</div>
+  <div id="railList"></div>
+  <div class="rail-foot">记号：t=1 是噪声，t=0 是数据；X<sub>t→r</sub> 从 t 跳到 r（r &lt; t）。<br>配套：<a href="https://claude.ai/artifact/PvYTjehMnAjN9R3ShiJ5x5" target="_blank" rel="noopener">少步生成研究地图</a></div>
+</nav>
+
+<div class="topnav">
+  <b>Flow Map 精读讲义</b>
+  <select id="chSelect" aria-label="选择讲次"></select>
+</div>
+
+<main class="page" id="chapter" aria-live="polite">
+  <p class="loading">正在载入讲义…</p>
+</main>
+
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['\\(', '\\)']], displayMath: [['$$', '$$']], tags: 'ams' },
+  svg: { fontCache: 'global' },
+  options: { enableMenu: false },
+  startup: { typeset: false }
+};
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg-full.min.js" async></script>
+<script src="flowmap/lab.js" charset="utf-8"></script>
+<script>
+(function () {
+  const CH = [
+    ["导论", [["intro", "为什么要学流映射"]]],
+    ["奠基", [["fmm", "Flow Map Matching"], ["shortcut", "Shortcut Models"], ["meanflow", "MeanFlow"], ["selfdistill", "自蒸馏框架"], ["ayf", "Align Your Flow"], ["tvm", "Terminal Velocity Matching"]]],
+    ["修补 MeanFlow", [["imf", "Improved MeanFlow"], ["pmf", "Pixel MeanFlow"], ["mfvar", "MeanFlow 方差削减"], ["esc", "ESC"], ["temf", "TE-MeanFlow"]]],
+    ["去掉 JVP 与扩展", [["soflow", "SoFlow"], ["emf", "Euler Mean Flows"], ["cumflow", "Cumulative Flow Maps"], ["otnfm", "OT-NFM"]]],
+    ["收束", [["summary", "总结：一张对照表"]]]
+  ];
+  const FLAT = []; CH.forEach(([g, list]) => list.forEach(([id, name]) => FLAT.push({ id, name, group: g })));
+  const railList = document.getElementById("railList"), sel = document.getElementById("chSelect");
+  CH.forEach(([g, list]) => {
+    railList.insertAdjacentHTML("beforeend", `<div class="rail-group">${g}</div>`);
+    const og = document.createElement("optgroup"); og.label = g; sel.appendChild(og);
+    list.forEach(([id, name]) => {
+      const i = FLAT.findIndex(c => c.id === id);
+      railList.insertAdjacentHTML("beforeend", `<a href="#${id}" data-id="${id}"><span class="n">${i}</span><span>${name}</span></a>`);
+      const o = document.createElement("option"); o.value = id; o.textContent = `${i} · ${name}`; og.appendChild(o);
+    });
+  });
+  sel.addEventListener("change", () => { location.hash = sel.value; });
+
+  const root = document.getElementById("chapter");
+  const cache = {};
+  let current = null;
+  function typeset(el) {
+    const mj = window.MathJax;
+    if (mj && mj.typesetPromise) {
+      try { mj.texReset && mj.texReset(); mj.typesetClear && mj.typesetClear([el]); } catch (e) {}
+      return mj.typesetPromise([el]).catch(() => {});
+    }
+    return new Promise(res => setTimeout(() => res(typeset(el)), 300));
+  }
+  async function load(id) {
+    const i = FLAT.findIndex(c => c.id === id); if (i < 0) id = "intro";
+    if (current === id) return;
+    current = id;
+    const idx = FLAT.findIndex(c => c.id === id);
+    document.querySelectorAll("#railList a").forEach(a => { if (a.dataset.id === id) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
+    sel.value = id;
+    root.innerHTML = `<p class="loading">正在载入讲义…</p>`;
+    let html = cache[id];
+    if (!html) {
+      try { const r = await fetch(`flowmap/ch/${id}.html`); if (!r.ok) throw new Error(r.status); html = await r.text(); cache[id] = html; }
+      catch (e) { root.innerHTML = `<p class="loading">这一讲没有载入成功，请刷新页面再试。</p>`; return; }
+    }
+    if (current !== id) return;
+    const prev = FLAT[idx - 1], next = FLAT[idx + 1];
+    root.innerHTML = html + `<nav class="pager" aria-label="翻页">
+      ${prev ? `<a class="prev" href="#${prev.id}"><span>← 上一讲 · 第 ${idx - 1} 讲</span><b>${prev.name}</b></a>` : "<span></span>"}
+      ${next ? `<a class="next" href="#${next.id}"><span>下一讲 · 第 ${idx + 1} 讲 →</span><b>${next.name}</b></a>` : "<span></span>"}
+    </nav><footer class="foot">记号统一为：z<sub>t</sub> = (1−t)x + tε，t=1 为噪声、t=0 为数据；各论文原始记号的差别在边注里说明。实验均为二维高斯混合上的精确计算。</footer>`;
+    window.scrollTo(0, 0);
+    await typeset(root);
+    if (window.FlowLab) window.FlowLab.mountAll(root);
+    document.title = `${FLAT[idx].name} · Flow Map 精读讲义`;
+  }
+  function fromHash() { const id = (location.hash || "").replace("#", ""); load(FLAT.some(c => c.id === id) ? id : "intro"); }
+  window.addEventListener("hashchange", fromHash);
+  fromHash();
+
+  const bar = document.getElementById("bar");
+  function onScroll() { const h = document.documentElement, max = h.scrollHeight - h.clientHeight; bar.style.width = (max > 0 ? h.scrollTop / max * 100 : 0) + "%"; }
+  window.addEventListener("scroll", onScroll, { passive: true }); onScroll();
+})();
+</script>

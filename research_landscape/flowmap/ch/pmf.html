@@ -1,0 +1,80 @@
+<header class="row cover">
+  <div class="main">
+    <p class="eyebrow">第 8 讲 · 修补 MeanFlow · 2026</p>
+    <h1>Pixel MeanFlow：<em>输出空间与损失空间分开</em></h1>
+    <p class="lede">在像素空间里直接预测平均速度会彻底失败。pMF 让网络输出"去噪图像"，再换算成速度去计算 MeanFlow 损失，实现无 VAE 的一步生成：ImageNet 256 上 FID 2.22，512 上 2.48。</p>
+    <div class="byline"><span>作者 <b>含 Kaiming He</b></span><span>arXiv <b><a href="https://arxiv.org/abs/2601.22158" target="_blank" rel="noopener">2601.22158</a></b></span><span>像素空间 <b>1-NFE FID 2.22</b></span></div>
+    <div class="tagrow"><span>x-预测</span><span>v-loss</span><span>流形假设</span><span>像素空间</span></div>
+  </div>
+  <aside class="aside"><p>思路来自同组的 JiT（"Back to Basics"）：像素空间的 Transformer 应该预测干净图像，而不是噪声或速度。</p></aside>
+</header>
+
+<section>
+  <div class="row">
+    <div class="main">
+      <h2><span class="num">1</span>去噪图像场</h2>
+      <p>由平均速度定义一个新的场：</p>
+      <div class="display result">$$x(z_t,r,t)\triangleq z_t-t\cdot u(z_t,r,t). \tag{1}\label{eq:xfield}$$</div>
+      <p>看两个边界就知道它为什么叫"去噪图像"：</p>
+      <div class="derive">
+        <div class="eq">\(\displaystyle r=t:\quad x=z_t-t\,v(z_t,t)=\mathbb E[x\mid z_t]\)</div>
+        <div class="why">平均速度变成瞬时速度，\(x\) 是普通的<b>去噪估计</b></div>
+        <div class="eq">\(\displaystyle r=0:\quad x=z_t-t\cdot\frac{z_t-X_{t\to0}(z_t)}{t}=X_{t\to0}(z_t)\)</div>
+        <div class="why">就是流映射的终点，即一张<b>真实图像</b></div>
+      </div>
+      <p>中间的 \(r\) 是两者之间的过渡。论文提出"广义流形假设"：\(x\) 近似落在低维的图像流形上；而 \(u\) 是带噪声的量，铺满整个高维空间。</p>
+
+      <figure class="lab" data-lab="manifold">
+        <figcaption>数据分布在一个圆上（一维流形）。左边是 <span class="hl-b">u 的取值</span>，右边是 <span class="hl-a">x 的取值</span>。x 始终贴着一条曲线，u 弥散地铺满平面。图像是几万维的，这种差别就决定了网络能不能拟合。</figcaption>
+      </figure>
+    </div>
+    <aside class="aside"><p>为什么 \(r=t\) 时是去噪估计：\(v=\mathbb E[\epsilon-x\mid z_t]\)，而 \(z_t=(1-t)x+t\epsilon\)，代入整理即得。</p></aside>
+  </div>
+</section>
+
+<section>
+  <div class="row">
+    <div class="main">
+      <h2><span class="num">2</span>算法</h2>
+      <p>网络直接输出 \(x_\theta\)，换算成平均速度，再沿用 iMF 的 \(v\)-loss：</p>
+      <div class="derive">
+        <div class="eq">\(\displaystyle u_\theta(z_t,r,t)=\tfrac1t\big(z_t-x_\theta(z_t,r,t)\big)\)</div>
+        <div class="why">由式 (1) 反解</div>
+        <div class="eq">\(\displaystyle V_\theta=u_\theta+(t-r)\cdot\mathrm{JVP}_{\text{sg}}\)</div>
+        <div class="why">iMF 的复合预测</div>
+        <div class="eq">\(\displaystyle \mathcal L_{\text{pMF}}=\mathbb E\,\|V_\theta-v\|^2\)</div>
+        <div class="why"><b>\(x\)-预测、\(v\)-损失</b></div>
+      </div>
+      <p>可以再加一个感知损失（在 \(x_\theta\) 上算），也按 iMF 的方式支持 CFG。采样时 \(x=x_\theta(\epsilon,0,1)\)，一次前向直接输出像素。</p>
+
+      <h3>消融</h3>
+      <div class="tablewrap"><table class="cmp">
+        <thead><tr><th>设置</th><th>1-NFE FID</th></tr></thead>
+        <tbody>
+          <tr><td>64×64，patch 维度 48：\(x\)-预测 / \(u\)-预测</td><td>3.80 / 3.82</td></tr>
+          <tr><td>256×256，patch 维度 768：\(x\)-预测 / \(u\)-预测</td><td>9.56 / 164.89</td></tr>
+          <tr><td>加 EDM 式预条件（输出不再直接是 \(x\)）</td><td>14.43（无预条件 3.53）</td></tr>
+        </tbody>
+      </table></div>
+      <p>patch 维度低于网络宽度时两种预测都行；patch 维度一高，\(u\)-预测直接崩溃。任何把网络输出变换成 \(x\) 的预条件器都会让输出偏离流形，显著变差。另外 Muon 优化器比 Adam 收敛快，感知损失有明显帮助。</p>
+
+      <div class="tablewrap"><table class="cmp">
+        <thead><tr><th>ImageNet</th><th>1-NFE FID</th></tr></thead>
+        <tbody><tr><td>256×256（像素空间）</td><td>2.22</td></tr><tr><td>512×512（像素空间）</td><td>2.48</td></tr></tbody>
+      </table></div>
+    </div>
+    <aside class="aside"><p>这条线的逻辑很清楚：MeanFlow → iMF（\(v\)-loss）→ pMF（\(x\)-预测）。每一步只改一件事。</p></aside>
+  </div>
+</section>
+
+<section class="row">
+  <div class="main summary">
+    <h2>小结</h2>
+    <ol>
+      <li><span>定义 \(x=z_t-t\,u\)：\(r=t\) 是去噪估计，\(r=0\) 是流映射终点，都在图像流形附近。</span></li>
+      <li><span>网络输出 \(x\)，换算成 \(u\) 再用 \(v\)-loss：输出空间和损失空间分开设计。</span></li>
+      <li><span>高维像素空间里 \(u\)-预测会崩溃，\(x\)-预测可行；一步、无 VAE 做到 FID 2.22。</span></li>
+    </ol>
+  </div>
+  <aside class="aside"></aside>
+</section>

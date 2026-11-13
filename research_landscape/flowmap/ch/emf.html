@@ -1,0 +1,70 @@
+<header class="row cover">
+  <div class="main">
+    <p class="eyebrow">第 13 讲 · 去掉 JVP · 2026</p>
+    <h1>Euler Mean Flows：<em>把半群局部线性化</em></h1>
+    <p class="lede">从半群关系出发，对很短的一步做局部线性近似，把长程一致性目标改写成可以直接用数据监督、又不需要 JVP 的形式。同等 DiT-B 设置下，显存和单步耗时约减半，FID 也好于 MeanFlow。</p>
+    <div class="byline"><span>arXiv <b><a href="https://arxiv.org/abs/2602.02571" target="_blank" rel="noopener">2602.02571</a></b></span></div>
+    <div class="tagrow"><span>半群 (S)</span><span>局部线性化</span><span>无 JVP</span><span>从头训练</span></div>
+  </div>
+  <aside class="aside"><p><b>原文记号</b></p><p>原文 \(t=0\) 为噪声，从 \(t\) 走向更大的 \(r\)；平均速度 \(u_{t\to r}(x)=\frac{\phi_{t\to r}(x)-x}{r-t}\)。本讲保留原文写法。</p></aside>
+</header>
+
+<section>
+  <div class="row">
+    <div class="main">
+      <h2><span class="num">1</span>轨迹一致性为什么难</h2>
+      <p>流映射有两类约束：边界条件（\(\phi_{t\to t}=\mathrm{id}\)，起点导数为速度）和轨迹一致性（半群）。边界条件可以直接用数据监督，轨迹一致性却很难：</p>
+      <ul class="plain">
+        <li>半群约束本身有无穷多解，单靠它引入不了数据信息；</li>
+        <li>流映射没有像条件速度那样的"条件版本"。论文给出证明：不存在一个与条件速度相容、又能通过取期望得到边缘流映射的条件流映射。</li>
+      </ul>
+      <p>已有方法分两派：Shortcut、SplitMF 先学瞬时速度，再用半群逐步延伸到长程，监督间接、误差累积；MeanFlow 用连续方程，监督更直接，但需要 JVP。</p>
+    </div>
+    <aside class="aside"><p>这里的"不存在条件流映射"，就是导论里"不能直接回归"在理论上的严格版本。</p></aside>
+  </div>
+</section>
+
+<section>
+  <div class="row">
+    <div class="main">
+      <h2><span class="num">2</span>局部线性化</h2>
+      <p>用平均速度改写半群关系（\(t\le s\le r\)）：</p>
+      <div class="display">$$(r-t)\,u_{t\to r}(x_t)=(s-t)\,u_{t\to s}(x_t)+(r-s)\,u_{s\to r}(x_s). \tag{1}$$</div>
+      <p>EMF 的关键选择是让 \(s\) 紧挨着 \(t\)：\(s=t+\Delta t\)，\(\Delta t\) 是一个固定的小步长。对很短的一步，流映射可以线性近似，于是 \(u_{t\to s}\approx u_{t\to t}\)，即瞬时速度：</p>
+      <div class="display result">$$u_{t\to r}(x_t)\approx\class{ta}{u_{t\to t}(x_t)}+(r-t-\Delta t)\,\frac{\class{tb}{u_{t+\Delta t\to r}(x_{t+\Delta t})-u_{t\to r}(x_t)}}{\Delta t}. \tag{2}\label{eq:emf}$$</div>
+      <p><span class="hl-a">第一项</span>是瞬时速度，可以用数据的条件速度代替，这就是"直接的数据监督"；<span class="hl-b">第二项</span>是平均速度沿时间的有限差分，相当于 MeanFlow 修正项的离散版本，不需要 JVP。定理 4.3 在对流映射的合理假设（Assumption 1）下证明了这个近似的有效性。论文还给出了 \(x_1\)-预测的变体。</p>
+    </div>
+    <aside class="aside"><p>和 SoFlow 对照：两者都用差分代替 JVP；SoFlow 从 Eulerian 方程出发，EMF 从半群关系出发，用的是"紧挨着的一小步"。</p></aside>
+  </div>
+</section>
+
+<section>
+  <div class="row">
+    <div class="main">
+      <h2><span class="num">3</span>代价与结果</h2>
+      <div class="tablewrap"><table class="cmp">
+        <thead><tr><th>数据（DiT-B，同等算力）</th><th>方法</th><th>峰值显存</th><th>每步耗时</th><th>FID</th></tr></thead>
+        <tbody>
+          <tr><td>CelebA-HQ</td><td>MeanFlow</td><td>32.1 GB</td><td>151.4 ms</td><td>12.4</td></tr>
+          <tr><td>CelebA-HQ</td><td>EMF</td><td>23.3 GB</td><td>91.2 ms</td><td>10.9</td></tr>
+          <tr><td>ImageNet</td><td>MeanFlow</td><td>101.9 GB</td><td>400.9 ms</td><td>11.1</td></tr>
+          <tr><td>ImageNet</td><td>EMF</td><td>57.9 GB</td><td>198.8 ms</td><td>7.2</td></tr>
+        </tbody>
+      </table></div>
+      <p>原文表 6，比较的是相同架构与算力下的训练目标。作者把扩展到更大模型、更多任务和更一般的理论设定列为未来工作。</p>
+    </div>
+    <aside class="aside"></aside>
+  </div>
+</section>
+
+<section class="row">
+  <div class="main summary">
+    <h2>小结</h2>
+    <ol>
+      <li><span>轨迹一致性难在：半群有无穷多解，也不存在条件流映射。</span></li>
+      <li><span>取紧挨着的一小步做局部线性化，瞬时速度用数据监督，长程部分用有限差分，不需要 JVP。</span></li>
+      <li><span>显存与耗时约减半，同等设置下 FID 优于 MeanFlow。</span></li>
+    </ol>
+  </div>
+  <aside class="aside"></aside>
+</section>

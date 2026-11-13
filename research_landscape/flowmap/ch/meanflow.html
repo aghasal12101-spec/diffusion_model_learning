@@ -1,0 +1,100 @@
+<header class="row cover">
+  <div class="main">
+    <p class="eyebrow">第 3 讲 · 奠基 · NeurIPS 2025</p>
+    <h1>MeanFlow：<em>平均速度恒等式</em></h1>
+    <p class="lede">从平均速度的定义推出一个它必须满足的微分恒等式，把恒等式右边当回归目标，就能从头训练一步生成模型。这一讲把推导、JVP 切向量和训练细节完整走一遍。</p>
+    <div class="byline"><span>作者 <b>Geng, Deng, Bai, Kolter, He</b></span><span>arXiv <b><a href="https://arxiv.org/abs/2505.13447" target="_blank" rel="noopener">2505.13447</a></b></span><span>ImageNet 256 <b>1-NFE FID 3.43</b></span></div>
+    <div class="tagrow"><span>Eulerian (E)</span><span>JVP</span><span>从头训练</span></div>
+  </div>
+  <aside class="aside"><p>MeanFlow 的记号和讲义统一记号一致：\(z_t=(1-t)x+t\epsilon\)，\(z_r=z_t-(t-r)\,u(z_t,r,t)\)。</p></aside>
+</header>
+
+<section>
+  <div class="row">
+    <div class="main">
+      <h2><span class="num">1</span>推导恒等式</h2>
+      <p>从平均速度的定义出发（导论式 (2)），把分母乘过去：</p>
+      <div class="derive">
+        <div class="eq">\(\displaystyle (t-r)\,u(z_t,r,t)=\int_r^t v(z_\tau,\tau)\,\mathrm d\tau\)</div>
+        <div class="why">平均速度的定义</div>
+        <div class="eq">\(\displaystyle u+(t-r)\,\frac{\mathrm d}{\mathrm dt}u(z_t,r,t)=v(z_t,t)\)</div>
+        <div class="why">固定 \(r\)，两边对 \(t\) 求<b>全导数</b>：左边用乘积法则，右边用微积分基本定理</div>
+        <div class="eq">\(\displaystyle u(z_t,r,t)=\class{ta}{v(z_t,t)}-\class{tb}{(t-r)\,\frac{\mathrm d}{\mathrm dt}u(z_t,r,t)}\)</div>
+        <div class="why">移项</div>
+      </div>
+      <div class="display result">$$u(z_t,r,t)=\class{ta}{v(z_t,t)}-\class{tb}{(t-r)\big(v\,\partial_z u+\partial_t u\big)}. \tag{1}\label{eq:mf-id}$$</div>
+      <p>右边第一项是<span class="hl-a">瞬时速度</span>，可以用条件速度 \(\epsilon-x\) 无偏地代替；第二项是<span class="hl-b">修正项</span>，告诉网络平均速度与瞬时速度差多少。全导数沿轨迹求：\(z_t\) 本身随 \(t\) 移动，速度为 \(v\)，所以展开后有 \(v\,\partial_z u\) 一项。</p>
+
+      <figure class="lab" data-lab="identity">
+        <figcaption>在二维例子里，用真实流映射算出 \(u\) 和恒等式右边，两者应当相等。把 r 拖向 t，<span class="hl-a">平均速度</span>会趋于<span class="hl-b">瞬时速度</span>。</figcaption>
+      </figure>
+    </div>
+    <aside class="aside">
+      <p>和导论式 (4) 对照：把 \(X_{t\to r}=z-(t-r)u\) 代入 Eulerian 方程 \(\partial_tX+\nabla_zX\,v=0\)，整理后就是式 (1)。所以 MeanFlow 是 <b>Eulerian 型</b>。</p>
+    </aside>
+  </div>
+</section>
+
+<section>
+  <div class="row">
+    <div class="main">
+      <h2><span class="num">2</span>变成训练目标</h2>
+      <p>把式 \eqref{eq:mf-id} 的右边当成回归目标，网络放在左边：</p>
+      <div class="display">$$\mathcal L=\mathbb E\,\big\|u_\theta(z_t,r,t)-\mathrm{sg}(u_{\text{tgt}})\big\|^2,\qquad u_{\text{tgt}}=v_t-(t-r)\big(v_t\,\partial_z u_\theta+\partial_t u_\theta\big). \tag{2}\label{eq:mf-loss}$$</div>
+      <p>其中 \(v_t=\epsilon-x\)。几个关键点：</p>
+      <ul class="plain">
+        <li><b>JVP 切向量为 \((v_t,0,1)\)</b>。全导数 \(\frac{\mathrm du}{\mathrm dt}=\partial_z u\cdot\frac{\mathrm dz}{\mathrm dt}+\partial_r u\cdot\frac{\mathrm dr}{\mathrm dt}+\partial_t u\)，沿轨迹 \(\mathrm dz/\mathrm dt=v\)，\(r\) 固定，所以一次前向模式自动微分就能同时得到 \(u_\theta\) 和 \(\mathrm du_\theta/\mathrm dt\)。</li>
+        <li><b>stop-gradient</b>：目标里含网络自身，不截断就要二阶导，而且容易把两边一起拉向平凡解。</li>
+        <li><b>\(r=t\) 时</b>修正项为 0，目标退化为 \(v_t\)，即 flow matching。训练中保留一部分 \(r=t\) 的样本（论文消融里约 75% 的样本 \(r=t\)），给恒等式一个可靠的锚。</li>
+        <li><b>自适应权重</b>：\(w=1/(\|\Delta\|^2+c)^p\)，相当于对大误差样本降权的鲁棒损失。</li>
+      </ul>
+
+      <h3>把 CFG 烤进模型</h3>
+      <p>一步模型没法在采样时做 CFG 外推，于是在训练时把目标速度换成引导后的速度：</p>
+      <div class="display">$$\tilde v_t=\omega\,v_t+(1-\omega)\,u_\theta(z_t,t,t\mid\varnothing),$$</div>
+      <p>其中无条件速度用网络自己的对角线输出估计。这样采样仍是 1 NFE，代价是 \(\omega\) 在训练时就固定了。论文附录还加了一个系数 \(\kappa\)，把条件版本的 \(u_\theta\) 也混进目标（等效引导强度 \(\omega'=\omega/(1-\kappa)\)），并且只在一段 \(t\) 区间内启用引导；默认超参是 \(r\ne t\) 比例 25%、自适应权重 \(p=1\)。</p>
+
+      <pre class="algo">x ~ 数据, ε ~ N(0, I);  (t, r) ~ logit-normal，一部分令 r = t
+z = (1 − t)·x + t·ε,   v = ε − x
+(u, dudt) = jvp(u_θ, (z, r, t), (v, 0, 1))
+u_tgt = v − (t − r)·dudt
+loss  = 自适应权重( ‖u − stopgrad(u_tgt)‖² )
+采样:  x = ε − u_θ(ε, 0, 1)</pre>
+    </div>
+    <aside class="aside">
+      <p>注意切向量里的 \(v\) 只能用带噪声的条件速度 \(\epsilon-x\) 代替。这个看似无害的替换，正是第 7、9、10、11 讲要处理的问题。</p>
+    </aside>
+  </div>
+</section>
+
+<section>
+  <div class="row">
+    <div class="main">
+      <h2><span class="num">3</span>结果与局限</h2>
+      <div class="tablewrap"><table class="cmp">
+        <thead><tr><th>模型</th><th>NFE</th><th>FID（ImageNet 256）</th></tr></thead>
+        <tbody><tr><td>MF-B/2</td><td>1</td><td>6.17</td></tr><tr><td>MF-XL/2</td><td>1</td><td>3.43</td></tr><tr><td>MF-XL/2</td><td>2</td><td>2.20</td></tr></tbody>
+      </table></div>
+      <p>从头训练，不需要老师、课程或预训练。局限也很清楚，后面几讲分别处理：</p>
+      <ul class="plain">
+        <li>JVP 计算贵、实现难（第 12、13 讲去掉 JVP）；</li>
+        <li>目标里含网络自身，不是标准回归（第 7 讲 iMF）；</li>
+        <li>切向量用带噪的条件速度，目标方差大、损失不降（第 9、10、11 讲）；</li>
+        <li>CFG 强度训练时写死（第 7 讲）；只能在潜空间做（第 8 讲 pMF）。</li>
+      </ul>
+    </div>
+    <aside class="aside"><p>MeanFlow 的一步结果 3.43 在一年后被 iMF（1.72）、Drifting（1.54）等超过，但它确立了"从头训练一步模型"这条路线。</p></aside>
+  </div>
+</section>
+
+<section class="row">
+  <div class="main summary">
+    <h2>小结</h2>
+    <ol>
+      <li><span>恒等式：\(u=v-(t-r)\frac{\mathrm du}{\mathrm dt}\)，由平均速度的定义对 \(t\) 求全导数得到。</span></li>
+      <li><span>全导数沿轨迹求，JVP 切向量为 \((v,0,1)\)；它是 Eulerian 方程的平均速度形式。</span></li>
+      <li><span>\(r=t\) 退化为 flow matching；CFG 通过修改目标速度烤进模型。</span></li>
+    </ol>
+  </div>
+  <aside class="aside"></aside>
+</section>

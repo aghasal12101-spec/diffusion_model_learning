@@ -1,0 +1,69 @@
+<header class="row cover">
+  <div class="main">
+    <p class="eyebrow">第 14 讲 · 扩展 · 2026</p>
+    <h1>Cumulative Flow Maps：<em>不只是 u-预测</em></h1>
+    <p class="lede">MeanFlow 绑定在 \(u\)-预测的 flow matching 上。这篇论文把扩散、score matching、flow matching 统一成连续时间马尔可夫过程，提出与具体预测量无关的"累积流映射"，让 EDM、DDIM、\(x_1\)-预测等参数化都能变成少步模型。主要面向图形学任务。</p>
+    <div class="byline"><span>arXiv <b><a href="https://arxiv.org/abs/2605.03623" target="_blank" rel="noopener">2605.03623</a></b></span></div>
+    <div class="tagrow"><span>统一参数化</span><span>半群</span><span>图形学应用</span></div>
+  </div>
+  <aside class="aside"><p>原文 \(t=0\) 为起点（噪声），\(t=1\) 为数据。</p></aside>
+</header>
+
+<section>
+  <div class="row">
+    <div class="main">
+      <h2><span class="num">1</span>动机</h2>
+      <p>图形学里常用的生成模型五花八门：几何分布用 EDM，关节预测用 DDIM，SDF 生成用 \(x_1\)-预测的 flow matching。MeanFlow 一类方法的公式和 \(u\)-预测绑在一起，很难直接迁移。作者想要一个只改训练目标、不改网络、不需要蒸馏的通用少步方案。</p>
+    </div>
+    <aside class="aside"></aside>
+  </div>
+</section>
+
+<section>
+  <div class="row">
+    <div class="main">
+      <h2><span class="num">2</span>瞬时流映射与累积流映射</h2>
+      <p><b>瞬时流映射。</b>各种多步模型都学一个局部量 \(m_t(x)\)（如速度、噪声、干净样本），通过短时转移 \(\psi_{t\to t+h}(x)=F[m_t(x),x,t,t+h]\) 逐步采样。\(F\) 是一个抽象函数，具体形式由参数化决定。</p>
+      <p><b>累积流映射。</b>把短时转移复合起来取极限，得到有限时间的转移：</p>
+      <div class="display">$$\psi_{t\to r}(x)=\lim_{\max_i|t_i-t_{i-1}|\to0}\psi_{t_{n-1}\to r}\big(\cdots\psi_{t\to t_1}(x)\big), \tag{1}$$</div>
+      <p>它天然满足半群性质 \(\psi_{t\to r}=\psi_{s\to r}\circ\psi_{t\to s}\)。<b>累积参数化场</b> \(m_{t\to r}\) 定义为满足</p>
+      <div class="display result">$$\psi_{t\to r}(x)=F\big[m_{t\to r}(x),\,x,\,t,\,r\big] \tag{2}$$</div>
+      <p>的场。对 \(u\)-预测的 flow matching，它就是 MeanFlow 的平均速度；对 EDM、DDIM、\(x_1\)-预测，它是各自预测量的"累积版本"。一个重要性质是</p>
+      <div class="display">$$\lim_{r\to t}m_{t\to r}(x)=m_t(x), \tag{3}$$</div>
+      <p>即对角线退化为原来的瞬时量。这让训练更稳定，也允许从预训练的多步模型初始化，大幅加快训练。</p>
+      <p>训练时没有可以直接计算的参考 \(m_{t\to r}\)（和导论里"不能直接回归"是同一个原因），所以论文给出了基于一致性关系的训练目标；实现上只需在时间嵌入里加入目标时间 \(r\)，网络容量不变。</p>
+    </div>
+    <aside class="aside"><p>可以把它看成 MeanFlow 思想的"参数化无关"版本，代价是放弃了 MeanFlow 那种简洁的恒等式。</p></aside>
+  </div>
+</section>
+
+<section>
+  <div class="row">
+    <div class="main">
+      <h2><span class="num">3</span>应用</h2>
+      <div class="tablewrap"><table class="cmp">
+        <thead><tr><th>任务</th><th>基础参数化</th><th>步数</th></tr></thead>
+        <tbody>
+          <tr><td>几何分布建模</td><td>EDM</td><td>6 步，约 10× 加速且质量不降</td></tr>
+          <tr><td>关节预测</td><td>DDIM</td><td>10 步</td></tr>
+          <tr><td>64 个表面点稀疏条件下的 SDF 生成</td><td>\(x_1\)-FM</td><td>4 步</td></tr>
+          <tr><td>图像条件的草图生成</td><td>DDIM</td><td>1 步</td></tr>
+        </tbody>
+      </table></div>
+      <p>作者明确指出：评估只覆盖 5 个应用、4 种参数化，扩展到 ImageNet 等大规模数据是未来工作。</p>
+    </div>
+    <aside class="aside"></aside>
+  </div>
+</section>
+
+<section class="row">
+  <div class="main summary">
+    <h2>小结</h2>
+    <ol>
+      <li><span>把多步模型统一为"瞬时流映射"，复合取极限得到累积流映射，天然满足半群。</span></li>
+      <li><span>累积参数化场对角线退化为原瞬时量，可从预训练模型初始化；只改时间嵌入与损失。</span></li>
+      <li><span>适用于 EDM、DDIM、\(x_1\)-预测等参数化，目前在图形学任务上验证。</span></li>
+    </ol>
+  </div>
+  <aside class="aside"></aside>
+</section>

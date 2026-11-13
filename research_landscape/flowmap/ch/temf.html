@@ -1,0 +1,64 @@
+<header class="row cover">
+  <div class="main">
+    <p class="eyebrow">第 11 讲 · 修补 MeanFlow · CVPR 2026</p>
+    <h1>TE-MeanFlow：<em>让不同时间尺度说话一样大声</em></h1>
+    <p class="lede">MeanFlow 一提高 \(r\ne t\) 的样本比例，性能就明显下降。原因是"时间尺度失衡"：不同跨度 \(\Delta=t-r\) 的样本对梯度的贡献相差悬殊。TE-MeanFlow 用一个均衡权重和一个动态边界调度来调和，不改架构，一步 FID 2.62。</p>
+    <div class="byline"><span>CVPR 2026 <b><a href="https://openaccess.thecvf.com/content/CVPR2026/papers/Tu_Temporal_Equilibrium_MeanFlow_Bridging_the_Scale_Gap_for_One-Step_Generation_CVPR_2026_paper.pdf" target="_blank" rel="noopener">论文 PDF</a></b></span><span>ImageNet 256 <b>1-NFE 2.62 · 2-NFE 2.30</b></span></div>
+    <div class="tagrow"><span>Eulerian (E)</span><span>损失加权</span><span>训练调度</span></div>
+  </div>
+  <aside class="aside"><p>论文图 2：不同大小的 DiT 下，MeanFlow 的一步 FID 都对 \(r\ne t\) 比例非常敏感。</p></aside>
+</header>
+
+<section>
+  <div class="row">
+    <div class="main">
+      <h2><span class="num">1</span>两种相反的需求</h2>
+      <p>训练 MeanFlow 时，有两股力量在拉扯：</p>
+      <ul class="plain">
+        <li>在生成的起点附近（\(r\approx t\)），需要强的边界约束，它们提供稳定的训练信号；</li>
+        <li>跨度大的项会放大方差，却又是学会长距离跳跃所必需的。</li>
+      </ul>
+      <p>固定的时间采样策略没法同时满足两者。作者先给出方差随跨度变化的模型：</p>
+      <div class="display">$$\mathrm{Var}[u_{\text{tgt}}]\le\frac{C_1}{\Delta}+C_2\,\Delta^2+O(\Delta^3), \tag{1}\label{eq:te-var}$$</div>
+      <p>单样本梯度为 \(\nabla_\theta\mathcal L_{\text{MF}}=2\,(u_\theta-u_{\text{tgt}})\cdot\nabla_\theta u_\theta\)，所以不同 \(\Delta\) 的样本对梯度的贡献很不均衡。</p>
+
+      <figure class="lab" data-lab="delta">
+        <figcaption>二维例子里，原始目标（β=0）噪声分布的<span class="hl-b">尾部</span>随跨度增大几个数量级，中位数反而下降：大跨度样本偶尔会产生极端的目标。<span class="hl-a">确定性切向量</span>（β=1）几乎不受跨度影响。论文式 (1) 中的 \(1/\Delta\) 项来自它自己的分析设定，这里没有复现；实验想说明的是同一点：不同跨度的样本，对梯度的影响量级可以相差很大。</figcaption>
+      </figure>
+    </div>
+    <aside class="aside"><p>\(\Delta\) 越小越接近 flow matching；\(\Delta\) 越大越接近一步生成。两者都要学，但它们的"音量"差得太多。</p></aside>
+  </div>
+</section>
+
+<section>
+  <div class="row">
+    <div class="main">
+      <h2><span class="num">2</span>两个组件</h2>
+      <h3>时间均衡权重</h3>
+      <p>目标是让每个跨度对梯度方差的贡献相同。由 \(\nabla_\theta\mathcal L_{\text{TEMF}}\approx w(\Delta)\,\nabla_\theta\mathcal L_{\text{MF}}\) 和式 \eqref{eq:te-var}，理想权重满足</p>
+      <div class="display">$$w(\Delta)^2\Big(\frac{C_1}{\Delta}+C_2\Delta^2\Big)=\text{常数}, \tag{2}$$</div>
+      <p>论文用一个有界的函数族 \(1/\big[(1+\lambda_1\Delta^{\beta_1})\sqrt{1+\lambda_2\Delta^2}\big]\) 来近似这个理想解，保证加权后的梯度方差在整个 \(\Delta\) 范围内有统一上界。</p>
+      <h3>动态边界调度</h3>
+      <p>最合适的边界约束强度在训练中是变化的：早期需要强调 \(r\approx t\) 的边界样本，把速度场学稳；后期再逐渐把重心移到轨迹精修上。TE-MeanFlow 用一个随训练进度变化的调度来实现这种转移。</p>
+
+      <div class="tablewrap"><table class="cmp">
+        <thead><tr><th>ImageNet 256，带 CFG</th><th>FID</th></tr></thead>
+        <tbody><tr><td>1-NFE</td><td>2.62</td></tr><tr><td>2-NFE</td><td>2.30</td></tr></tbody>
+      </table></div>
+      <p>作者称这是扩散和流模型中一步方法的最好结果（在其对比范围内），并且不改架构、仍是真正的一步生成。</p>
+    </div>
+    <aside class="aside"><p>和第 9 讲对照：方差削减是在"每个样本内部"降噪，TE-MeanFlow 是在"不同样本之间"重新分配权重。</p></aside>
+  </div>
+</section>
+
+<section class="row">
+  <div class="main summary">
+    <h2>小结</h2>
+    <ol>
+      <li><span>MeanFlow 的不稳定部分来自时间尺度失衡：不同跨度的目标方差量级不同。</span></li>
+      <li><span>均衡权重让各跨度对梯度方差的贡献相当；动态调度让训练重心从边界稳定转向轨迹精修。</span></li>
+      <li><span>不改架构，一步 FID 2.62，两步 2.30。</span></li>
+    </ol>
+  </div>
+  <aside class="aside"></aside>
+</section>

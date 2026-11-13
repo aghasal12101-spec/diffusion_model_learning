@@ -1,0 +1,159 @@
+<header class="row cover">
+  <div class="main">
+    <p class="eyebrow">第 0 讲 · 导论</p>
+    <h1>为什么要学<em>流映射</em></h1>
+    <p class="lede">一步生成就是学会从噪声跳到数据的那一步。这一讲回答三个问题：要学的对象是什么，为什么不能直接回归，以及后面所有论文都在用的三个方程。</p>
+    <div class="byline"><span>前置 <b>Flow Matching、CM、MeanFlow</b></span><span>实验 <b>3 个</b></span></div>
+  </div>
+  <aside class="aside">
+    <p><b>怎么读这份讲义</b></p>
+    <p>每一讲按"在解决什么问题 → 推导 → 关键设计 → 和前面方法的关系"展开。灰色右栏是边注：记号、原文出处和补充说明。</p>
+    <p>实验都可以拖动，数字是实时算出来的。</p>
+  </aside>
+</header>
+
+<section>
+  <div class="row">
+    <div class="main">
+      <h2><span class="num">1</span>要学的对象</h2>
+      <p>Flow matching 学的是速度场 \(v(z,t)\)。采样时从噪声 \(z_1=\epsilon\) 出发，沿常微分方程 \(\mathrm dz/\mathrm dt=v(z,t)\) 从 \(t=1\) 积分到 \(t=0\)。每积分一小步就要调用一次网络，所以要几十上百步。</p>
+
+      <div class="thm def">
+        <div class="thm-label">定义 1 <i>（流映射与平均速度）</i></div>
+        <p>对 \(r\le t\)，流映射 \(X_{t\to r}\) 把时间 \(t\) 的点沿 ODE 送到时间 \(r\)：</p>
+        <div class="display">$$X_{t\to r}(z_t)=z_t-\int_r^t v(z_\tau,\tau)\,\mathrm d\tau. \tag{1}\label{eq:fm-def}$$</div>
+        <p>把位移除以时间跨度，得到区间上的平均速度：</p>
+        <div class="display">$$u(z_t,r,t)\triangleq\frac{z_t-X_{t\to r}(z_t)}{t-r}=\frac1{t-r}\int_r^t v(z_\tau,\tau)\,\mathrm d\tau. \tag{2}\label{eq:avg}$$</div>
+      </div>
+
+      <p>学会 \(X_{1\to0}\)，一步生成就是 \(x=X_{1\to0}(\epsilon)\)。学会所有的 \(X_{t\to r}\)，就可以随意选步数：\(1\to0.5\to0\) 两步，或者更多步。后面每一篇论文，学的都是 \(X_{t\to r}\) 或者等价的 \(u(z_t,r,t)\)，区别只在训练信号怎么构造。</p>
+
+      <p>为什么不直接用很少几步 Euler 积分代替？因为真实轨迹是弯的。下面的实验里，1 步 Euler 的结果全部落在中间：</p>
+
+      <figure class="lab" data-lab="euler">
+        <figcaption>六个高斯团组成的二维数据。蓝线是真实 ODE 轨迹，红色虚线是 Euler 采样的路径。<b>步数越少，越偏离真实终点</b>；1 步时所有点都落在数据均值上。</figcaption>
+      </figure>
+    </div>
+    <aside class="aside">
+      <p><b>记号</b></p>
+      <p>\(z_t=(1-t)\,x+t\,\epsilon\)，\(x\) 是数据，\(\epsilon\sim\mathcal N(0,I)\)。<br>条件速度 \(v_{\text{cond}}=\epsilon-x\)。<br>边缘速度 \(v(z,t)=\mathbb E[\epsilon-x\mid z_t=z]\)。</p>
+      <p>不同论文的时间方向不同：Boffi 等、Shortcut、OT-NFM 用 \(t=0\) 表示噪声。讲义里统一换成 \(t=1\) 为噪声。</p>
+      <p>MeanFlow 的 \(u\) 就是式 (2)；TVM 的 \(F_\theta\) 也是它。</p>
+    </aside>
+  </div>
+</section>
+
+<section>
+  <div class="row">
+    <div class="main">
+      <h2><span class="num">2</span>为什么不能直接回归</h2>
+      <p>最自然的想法：训练数据里本来就有配对 \((x,\epsilon)\)，那就让网络从 \(z_t\) 直接回归到配对的那个 \(x\)。可惜这样学到的不是流映射。</p>
+
+      <div class="derive">
+        <div class="eq">\(\displaystyle \min_{X_\theta}\ \mathbb E\,\big\|X_\theta(z_t)-x\big\|^2\)</div>
+        <div class="why">用配对的数据点当回归目标</div>
+        <div class="eq">\(\displaystyle \Rightarrow\ X_\theta^\ast(z_t)=\mathbb E\,[\,x\mid z_t\,]\)</div>
+        <div class="why">平方损失的最优解是<b>条件期望</b></div>
+        <div class="eq">\(\displaystyle \mathbb E\,[\,x\mid z_1\,]=\mathbb E\,[x]\)</div>
+        <div class="why">\(t=1\) 时 \(z_1=\epsilon\) 与 \(x\) 独立</div>
+      </div>
+
+      <p>所以直接回归学到的是"一堆可能数据的平均"，是一张模糊的图；在 \(t=1\) 处更是所有输出都等于数据均值。下面的实验对比了两者：</p>
+
+      <figure class="lab" data-lab="collapse">
+        <figcaption>每个灰色圆圈是一个 \(z_t\)。<span class="hl-b">红点</span>是直接回归的最优解 \(\mathbb E[x\mid z_t]\)，<span class="hl-a">蓝点</span>是真实流映射的终点。把 t 拖到 1，红点会全部缩到原点。</figcaption>
+      </figure>
+
+      <p>那为什么学速度时可以直接回归？因为速度目标对 \(z_t\) 取条件期望后恰好是我们要的东西：</p>
+      <div class="display">$$\mathbb E\big[\,\epsilon-x\mid z_t\,\big]=v(z_t,t). \tag{3}\label{eq:unbiased}$$</div>
+      <p>速度是"局部的"，条件期望不会改变它的含义；流映射是"全局的"，条件期望会把不同轨迹的终点平均掉。Euler Mean Flows 一文还证明了：不存在一种"条件流映射"，既和条件速度相容，又能通过取期望得到真实流映射。</p>
+    </div>
+    <aside class="aside">
+      <p>这就是 OT-NFM 说的"均值坍缩"，也是一致性模型早期用 \(\ell_2\) 回归会出模糊图的原因。</p>
+      <p>式 (3) 是 flow matching 能成立的全部理由。后面会反复用到：<b>只有速度能从数据里无偏地学</b>。</p>
+    </aside>
+  </div>
+</section>
+
+<section>
+  <div class="row">
+    <div class="main">
+      <h2><span class="num">3</span>流映射满足的三个方程</h2>
+      <p>既然不能直接监督 \(X\)，就换一个思路：找出真实流映射一定满足的方程，让网络去满足它们。方程里需要的速度，用式 \eqref{eq:unbiased} 从数据里学。</p>
+
+      <div class="thm">
+        <div class="thm-label">命题 1 <i>（流映射的三种刻画）</i></div>
+        <p>真实流映射满足边界条件 \(X_{t\to t}=\mathrm{id}\)，并且满足下面任何一个方程。反过来，满足边界条件和其中任意一个方程的映射就是真实流映射。</p>
+        <div class="display">$$\text{(E)}\quad \partial_t X_{t\to r}(z)+\nabla_z X_{t\to r}(z)\,v(z,t)=0 \tag{4}\label{eq:euler}$$</div>
+        <div class="display">$$\text{(L)}\quad \partial_r X_{t\to r}(z)=v\big(X_{t\to r}(z),\,r\big) \tag{5}\label{eq:lag}$$</div>
+        <div class="display">$$\text{(S)}\quad X_{t\to r}=X_{s\to r}\circ X_{t\to s},\qquad r\le s\le t \tag{6}\label{eq:semi}$$</div>
+      </div>
+
+      <ul class="plain">
+        <li><b>Eulerian（E）</b>：让起点沿着轨迹滑动，终点不应该变。实现时要算 \(\nabla_z X\) 与速度的乘积，也就是一次对输入的 JVP，而且<span class="hl-b">切向量里含速度</span>。</li>
+        <li><b>Lagrangian（L）</b>：让终点沿时间移动，它的移动速度等于终点处的速度场。只需要<span class="hl-a">对时间求导</span>。</li>
+        <li><b>半群（S）</b>：一大步等于两小步，不需要任何导数，但要从小步"自举"出大步。</li>
+      </ul>
+
+      <figure class="lab" data-lab="equations">
+        <figcaption>拖动三个时间，看三个方程分别在说什么。把检验对象换成"一步 Euler 近似"，三个残差都会明显偏离 0：<b>这就是这些方程能当训练信号的原因</b>。</figcaption>
+      </figure>
+
+      <details>
+        <summary>为什么 (E) 成立：沿轨迹求导</summary>
+        <div>
+          <div class="derive">
+            <div class="eq">\(\displaystyle X_{t\to r}(z_t)=x_r\quad\text{对轨迹上所有 }t\text{ 成立}\)</div>
+            <div class="why">同一条轨迹上的点都跳到同一个 \(x_r\)</div>
+            <div class="eq">\(\displaystyle 0=\frac{\mathrm d}{\mathrm dt}X_{t\to r}(z_t)=\partial_t X_{t\to r}+\nabla_z X_{t\to r}\,\frac{\mathrm dz_t}{\mathrm dt}\)</div>
+            <div class="why">链式法则</div>
+            <div class="eq">\(\displaystyle \phantom{0}=\partial_t X_{t\to r}+\nabla_z X_{t\to r}\,v(z_t,t)\)</div>
+            <div class="why">\(\mathrm dz_t/\mathrm dt=v\)</div>
+          </div>
+        </div>
+      </details>
+    </div>
+    <aside class="aside">
+      <p>三个名字来自流体力学：Eulerian 在固定位置观察，Lagrangian 跟着粒子走。</p>
+      <p>出处：Boffi、Albergo、Vanden-Eijnden 的 Flow Map Matching（第 1 讲）把三者系统地写了出来。</p>
+    </aside>
+  </div>
+</section>
+
+<section>
+  <div class="row">
+    <div class="main">
+      <h2><span class="num">4</span>一个通用配方：自蒸馏</h2>
+      <p>把上面两点合起来，几乎所有从头训练的 flow map 方法都是同一个配方：</p>
+      <ol class="plain">
+        <li>在对角线 \(r=t\) 上，用 flow matching 损失从数据学速度（无偏，式 \eqref{eq:unbiased}）；</li>
+        <li>在非对角线 \(r\ne t\) 上，选 (E)、(L)、(S) 中的一个，让网络自己满足它；方程里出现的速度和"目标侧"的网络输出都用 stop-gradient 固定住。</li>
+      </ol>
+      <p>网络既是学生也是老师，所以叫自蒸馏。如果方程里的速度换成一个预训练好的扩散模型，就成了蒸馏（例如 AYF、sCM）。</p>
+
+      <div class="tablewrap"><table class="cmp">
+        <thead><tr><th>方程</th><th>需要的计算</th><th>代表方法</th><th>主要麻烦</th></tr></thead>
+        <tbody>
+          <tr><td>Eulerian (E)</td><td>对输入的 JVP，切向量含速度</td><td>MeanFlow、iMF、pMF、SoFlow、AYF-EMD</td><td>切向量里的噪声被放大（第 9 讲）</td></tr>
+          <tr><td>Lagrangian (L)</td><td>只对时间求导</td><td>TVM、LSD、AYF-LMD</td><td>要在模型自己的落脚点上取速度</td></tr>
+          <tr><td>半群 (S)</td><td>无导数，多次前向</td><td>Shortcut、PSD、EMF</td><td>从小步自举，误差累积</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+    <aside class="aside">
+      <p>"stop-gradient 的目标"是这条线所有方法的共同点：目标里含网络自身，不截断梯度会把两边一起拉向平凡解。</p>
+    </aside>
+  </div>
+</section>
+
+<section class="row">
+  <div class="main summary">
+    <h2>小结</h2>
+    <ol>
+      <li><span>要学的对象是流映射 \(X_{t\to r}\)，或等价的平均速度 \(u(z_t,r,t)\)。</span></li>
+      <li><span>直接回归会得到条件期望，产生模糊或塌缩；只有速度能从数据里无偏地学。</span></li>
+      <li><span>流映射满足 Eulerian、Lagrangian、半群三个方程。读后面每一篇论文都可以先问三个问题：用了哪个方程？导数怎么算？目标里的噪声从哪来、怎么处理？</span></li>
+    </ol>
+  </div>
+  <aside class="aside"></aside>
+</section>

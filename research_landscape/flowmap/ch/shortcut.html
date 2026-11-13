@@ -1,0 +1,80 @@
+<header class="row cover">
+  <div class="main">
+    <p class="eyebrow">第 2 讲 · 奠基 · ICLR 2025</p>
+    <h1>Shortcut Models：<em>两小步等于一大步</em></h1>
+    <p class="lede">把步长当作网络的输入，用"两次小跳的平均等于一次大跳"做自洽训练。只训练一次、只有一个网络、推理时步数随意选。这是半群方程最直接的落地。</p>
+    <div class="byline"><span>作者 <b>Frans, Hafner, Levine, Abbeel</b></span><span>arXiv <b><a href="https://arxiv.org/abs/2410.12557" target="_blank" rel="noopener">2410.12557</a></b></span></div>
+    <div class="tagrow"><span>半群 (S)</span><span>无导数</span><span>从头训练</span></div>
+  </div>
+  <aside class="aside">
+    <p><b>原文记号</b></p>
+    <p>原文 \(t=0\) 为噪声、\(t=1\) 为数据，步长 \(d\) 朝数据方向。本讲换成统一记号：从 \(t\) 走向 \(t-d\)。</p>
+  </aside>
+</header>
+
+<section>
+  <div class="row">
+    <div class="main">
+      <h2><span class="num">1</span>在解决什么问题</h2>
+      <p>一致性模型要两阶段训练或精心设计步长课程，渐进蒸馏要多轮蒸馏、每轮都要一个老师。作者想要的是：<b>一个网络、一次训练、不需要老师，推理时 1 步到 128 步随便选。</b></p>
+    </div>
+    <aside class="aside"></aside>
+  </div>
+</section>
+
+<section>
+  <div class="row">
+    <div class="main">
+      <h2><span class="num">2</span>方法</h2>
+      <p>网络 \(s_\theta(z_t,t,d)\) 预测从 \(z_t\) 出发、步长为 \(d\) 的"捷径方向"，一步更新为</p>
+      <div class="display">$$z_{t-d}=z_t-d\cdot s_\theta(z_t,t,d). \tag{1}\label{eq:sc-step}$$</div>
+      <p>它就是区间 \([t-d,t]\) 上的平均速度。训练目标分两部分：</p>
+      <div class="derive">
+        <div class="eq">\(\displaystyle d=0:\quad \big\|s_\theta(z_t,t,0)-(\epsilon-x)\big\|^2\)</div>
+        <div class="why">步长为 0 时就是 <b>flow matching</b></div>
+        <div class="eq">\(\displaystyle z'=z_t-d\,s_\theta(z_t,t,d)\)</div>
+        <div class="why">先走一小步</div>
+        <div class="eq">\(\displaystyle s_{\text{tgt}}=\tfrac12\big[s_\theta(z_t,t,d)+s_\theta(z',t-d,d)\big]\)</div>
+        <div class="why">两次小跳的<b>平均方向</b></div>
+        <div class="eq">\(\displaystyle d>0:\quad \big\|s_\theta(z_t,t,2d)-\mathrm{sg}(s_{\text{tgt}})\big\|^2\)</div>
+        <div class="why">一次大跳要等于两次小跳</div>
+      </div>
+      <p>第三行乘上 \(2d\) 再看就是半群关系：\(z_t-2d\,s(z_t,t,2d)=z'-d\,s(z',t-d,d)\)，即 \(X_{t\to t-2d}=X_{t-d\to t-2d}\circ X_{t\to t-d}\)。</p>
+      <p>实现细节：步长取 2 的幂（如 \(1/128\) 到 \(1/2\)）；一个批次里约 3/4 的样本做 flow matching，1/4 做自洽。</p>
+
+      <figure class="lab" data-lab="equations" data-preset="semi">
+        <figcaption>选"半群"模式：<span class="hl-b">红色</span>是先跳到 s 再跳到 r，<span class="hl-a">蓝色</span>是一步直接跳。对真实流映射两者重合；Shortcut 训练的就是让网络满足这一点。</figcaption>
+      </figure>
+    </div>
+    <aside class="aside">
+      <p>为什么取平均而不是复合？因为网络输出的是方向，两段平均方向的平均，乘上总步长就等于两段位移之和。</p>
+      <p>"3/4 做 flow matching"保证对角线上的速度是对的，否则自洽目标没有可靠的起点。</p>
+    </aside>
+  </div>
+</section>
+
+<section>
+  <div class="row">
+    <div class="main">
+      <h2><span class="num">3</span>它的局限，以及为什么后来被超过</h2>
+      <p>半群监督是"自举"的：大步长的目标由两个小步长的输出拼成，小步长的误差会一层层传到大步长。Boffi 等（第 4 讲）明确指出，这类 progressive 方法很难给出误差保证，实验上也不如 Lagrangian 型方法。离散的步长集合也让模型只在少数几个 \(d\) 上被训练过。</p>
+      <p>MeanFlow 可以看成它的连续版本：把"两小步等于一大步"在 \(d\to0\) 时求极限，得到一个微分恒等式，不再需要离散步长，也不再逐层自举。</p>
+
+      <h3>实验结果</h3>
+      <p>在 CelebA-HQ 和 ImageNet-256 上，同样单阶段训练的条件下，各个步数的质量都优于一致性模型和 reflow 基线；但一步生成与多步扩散仍有明显差距。</p>
+    </div>
+    <aside class="aside"><p>ESC（第 10 讲）把 Shortcut、CT、MeanFlow、IMM 放进同一个"一步预测 vs 两步目标"的框架里对比。</p></aside>
+  </div>
+</section>
+
+<section class="row">
+  <div class="main summary">
+    <h2>小结</h2>
+    <ol>
+      <li><span>把步长 \(d\) 作为输入，\(d=0\) 用 flow matching，\(d>0\) 用"两小步平均等于一大步"。</span></li>
+      <li><span>本质是半群方程，无导数、实现简单。</span></li>
+      <li><span>代价是从小步自举到大步，误差累积，缺少理论保证。</span></li>
+    </ol>
+  </div>
+  <aside class="aside"></aside>
+</section>

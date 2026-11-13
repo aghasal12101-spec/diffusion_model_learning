@@ -1,0 +1,106 @@
+<header class="row cover">
+  <div class="main">
+    <p class="eyebrow">第 6 讲 · 奠基 · ICLR 2026</p>
+    <h1>Terminal Velocity Matching：<em>在终点匹配速度</em></h1>
+    <p class="lede">学的对象和 MeanFlow 完全一样，区别是对终点时间求导而不是对起点。这个看似很小的换法，让条件速度不再进入 JVP，并且得到了 \(W_2\) 上界；代价是需要让网络接近 Lipschitz。</p>
+    <div class="byline"><span>作者 <b>Zhou, Parger, Haque, Song</b>（Luma AI）</span><span>arXiv <b><a href="https://arxiv.org/abs/2511.19797" target="_blank" rel="noopener">2511.19797</a></b></span><span>ImageNet 256 <b>1-NFE 3.29 · 4-NFE 1.99</b></span></div>
+    <div class="tagrow"><span>Lagrangian (L)</span><span>时间 JVP</span><span>从头训练</span><span>W₂ 上界</span></div>
+  </div>
+  <aside class="aside"><p><b>原文记号</b></p><p>\(x_t=(1-t)x_0+tx_1\)，\(x_0\) 是数据；从 \(t\) 走到 \(s\le t\)。位移 \(f(x_t,t,s)=\psi(x_t,t,s)-x_t\)。</p></aside>
+</header>
+
+<section>
+  <div class="row">
+    <div class="main">
+      <h2><span class="num">1</span>对象：和 MeanFlow 是同一个东西</h2>
+      <p>参数化位移 \(f_\theta(x_t,t,s)=(s-t)\,F_\theta(x_t,t,s)\)。因为 \(\psi=x_t+(s-t)F\)，对照 MeanFlow 的 \(z_r=z_t-(t-r)u\)，可知 \(F_\theta\) 就是平均速度 \(u\)。乘上 \((s-t)\) 让 \(s=t\) 时位移自动为 0。</p>
+      <p>真实位移满足两个条件：</p>
+      <div class="display">$$\text{①}\quad f(x_t,t,s)=\int_t^s u(x_r,r)\,\mathrm dr,\qquad \text{②}\quad \frac{\mathrm d}{\mathrm ds}f(x_t,t,s)\Big|_{s=t}=u(x_t,t). \tag{1}$$</div>
+      <p>由 ② 得 \(u_\theta(x_t,t)=F_\theta(x_t,t,t)\)：同一个网络取 \(s=t\) 就是速度场，可以用 flow matching 学。困难在 ①：直接监督要在训练时积分 ODE。</p>
+    </div>
+    <aside class="aside"><p>TVM 原文用 \(u\) 表示瞬时速度场，用 \(v_s\) 表示条件速度，和 MeanFlow 的用法相反，阅读时注意。</p></aside>
+  </div>
+</section>
+
+<section>
+  <div class="row">
+    <div class="main">
+      <h2><span class="num">2</span>核心技巧：对终点时间求导</h2>
+      <p>对积分上限 \(s\) 求导，把积分方程变成微分方程：</p>
+      <div class="display result">$$\frac{\mathrm d}{\mathrm ds}f(x_t,t,s)=u\big(\psi(x_t,t,s),\,s\big). \tag{2}\label{eq:tv}$$</div>
+      <p>这就是<b>终点速度条件</b>：跳到 \(s\) 的位移对 \(s\) 的变化率，等于落脚点处的真实速度。为什么只满足这个导数条件就够了？</p>
+      <div class="derive">
+        <div class="eq">\(\displaystyle f_\theta(x_t,t,0)-f(x_t,t,0)=-\int_0^t\Big(\tfrac{\mathrm d}{\mathrm ds}f_\theta-\tfrac{\mathrm d}{\mathrm ds}f\Big)\mathrm ds\)</div>
+        <div class="why">两者在 \(s=t\) 处都为 0，写成导数的积分</div>
+        <div class="eq">\(\displaystyle \Big\|\int_0^t(a-b)\,\mathrm ds\Big\|^2\le t\int_0^t\|a-b\|^2\,\mathrm ds\le\int_0^t\|a-b\|^2\,\mathrm ds\)</div>
+        <div class="why">Cauchy–Schwarz，再用 \(t\le1\)</div>
+      </div>
+      <div class="display">$$\underbrace{\mathbb E\,\|f_\theta(x_t,t,0)-f(x_t,t,0)\|^2}_{\text{一步位移误差}}\le\int_0^t\mathbb E\,\Big\|\tfrac{\mathrm d}{\mathrm ds}f_\theta(x_t,t,s)-u(\psi(x_t,t,s),s)\Big\|^2\mathrm ds. \tag{3}\label{eq:bound}$$</div>
+      <p>只要每个中间时刻的终点速度对，一步跳的结果就对。\(t\to s\) 时，终点速度误差退化为 flow matching 损失：<b>flow matching 就是"位移为 0 时的终点速度匹配"</b>。</p>
+
+      <figure class="lab" data-lab="equations" data-preset="lag">
+        <figcaption>"Lagrangian"模式：拖动终点时间 r，<span class="hl-b">红色箭头</span>是终点处的速度场，终点的移动方向应当与它一致。换成"一步 Euler 近似"，残差明显变大。</figcaption>
+      </figure>
+    </div>
+    <aside class="aside"><p>比喻：路程长度没法直接量（积分），但只要行程中每一刻的速度都等于路面要求的速度，最终位移自然是对的。</p></aside>
+  </div>
+</section>
+
+<section>
+  <div class="row">
+    <div class="main">
+      <h2><span class="num">3</span>未知量用网络自己代替</h2>
+      <p>式 \eqref{eq:tv} 中真实落脚点 \(\psi\) 和真实速度 \(u\) 都未知，用模型自己的落脚点和速度分支代替：</p>
+      <div class="display">$$u\big(\psi(x_t,t,s),s\big)\approx u_{\theta^-}\big(x_t+f_\theta(x_t,t,s),\,s\big). \tag{4}$$</div>
+      <p>完整损失：</p>
+      <div class="display result">$$\mathcal L^{t,s}_{\text{TVM}}=\Big\|\class{ta}{\tfrac{\mathrm d}{\mathrm ds}f_\theta(x_t,t,s)-u_{\theta^-}\big(x_t+f_\theta,s\big)}\Big\|^2+\big\|\class{tb}{u_\theta(x_s,s)-v_s}\big\|^2. \tag{5}\label{eq:tvm}$$</div>
+      <p><span class="hl-b">FM 项</span>从数据学速度场（条件速度 \(v_s\) 是无偏目标）；<span class="hl-a">终点速度项</span>再用这个速度场去监督长距离跳跃。两项共用一个网络，属于 Lagrangian 型自蒸馏。</p>
+
+      <h3>和 MeanFlow 的对偶</h3>
+      <p>论文第 5 节把 MeanFlow 写成同样的形式：它要求 \(\frac{\mathrm d}{\mathrm dt}f_\theta=-u(x_t,t)\)，即对<b>起点</b>求导；起点随 \(t\) 移动，全导数里有 \(u(x_t,t)\cdot\nabla_x F\)，速度要进入 JVP 切向量，实际只能用带噪的 \(v_t\)。TVM 对<b>终点</b>求导：</p>
+      <div class="display">$$\frac{\mathrm d}{\mathrm ds}f_\theta=F_\theta+(s-t)\,\partial_sF_\theta,$$</div>
+      <p>JVP 只沿 \(s\) 这一个标量方向，切向量里不含速度。<b>条件速度只出现在 FM 项里，作为加性的无偏目标，不会被 Jacobian 放大。</b>代价是代理目标在模型自己（可能不准）的落脚点上取速度，引入的是偏差而不是方差。</p>
+    </div>
+    <aside class="aside"><p>第 9 讲会看到 MeanFlow 的切向量噪声有多严重；TVM 从构造上就绕开了它。</p></aside>
+  </div>
+</section>
+
+<section>
+  <div class="row">
+    <div class="main">
+      <h2><span class="num">4</span>理论与架构：为什么需要 Lipschitz</h2>
+      <div class="thm">
+        <div class="thm-label">定理 1 <i>（\(W_2\) 上界）</i></div>
+        <p>设速度网络 \(u_\theta(\cdot,s)\) 关于位置 Lipschitz 连续，常数为 \(L(s)\)，并满足温和的正则条件，则</p>
+        <div class="display">$$W_2^2\big(f^\theta_{t\to0}\#p_t,\;p_0\big)\le\int_0^t\lambda[L](s)\,\mathcal L^{t,s}_{\text{TVM}}\,\mathrm ds+C.$$</div>
+      </div>
+      <p>代理目标是在"模型以为的落脚点"上取速度。如果速度场对位置极其敏感，落脚点差一点，速度就差很多，误差一路放大；Lipschitz 常数限制的正是这种放大。</p>
+      <p>标准 DiT 不满足：LayerNorm 和点积注意力都不是 Lipschitz 的，训练中激活会突然爆炸。最小改动：RMSNorm 作 QK-Norm；所有 LayerNorm 换成无参数 RMSNorm；AdaLN 的调制参数 \(a(t),b(t)\) 也做 RMSNorm；线性层用 Lipschitz 初始化。</p>
+
+      <h3>工程细节</h3>
+      <ul class="plain">
+        <li><b>梯度穿过 JVP</b>：与 MeanFlow、sCM 不同，\(\partial_sF_\theta\) 也参与反传，需要支持 JVP 反向的 Flash Attention 核；AdamW 的 \(\beta_2\) 从 0.999 调到 0.95 平滑波动。</li>
+        <li><b>代理用 EMA</b>：\(\gamma=0\) 时 FID 10.24，\(\gamma=0.99\) 最好（4.90），\(\gamma=0.999\) 变差（6.04）。</li>
+        <li><b>CFG</b>：目标速度换成 \(w\,u(\cdot,c)+(1-w)\,u(\cdot)\)，每个 \(w\) 训一个模型；缩放参数化 \(f_\theta=(s-t)\,w\,F_\theta\)，\(w=1.5\) 时 1-NFE FID 从 9.32 降到 6.04。</li>
+        <li>\(t=s\) 的样本约 20% 时 2 步最好；FM 项用单独的时间分布；纯 L2，不需要自适应权重或课程。</li>
+      </ul>
+      <div class="tablewrap"><table class="cmp">
+        <thead><tr><th>ImageNet</th><th>1-NFE FID</th><th>4-NFE FID</th></tr></thead>
+        <tbody><tr><td>256×256</td><td>3.29</td><td>1.99</td></tr><tr><td>512×512</td><td>4.32</td><td>2.94</td></tr></tbody>
+      </table></div>
+    </div>
+    <aside class="aside"><p>Luma 还在博客里给出了 10B+ 规模的文生图结果。</p></aside>
+  </div>
+</section>
+
+<section class="row">
+  <div class="main summary">
+    <h2>小结</h2>
+    <ol>
+      <li><span>对象同 MeanFlow；对终点 \(s\) 求导得到终点速度条件，它上界一步位移误差。</span></li>
+      <li><span>未知的落脚点和速度用网络自己代替；条件速度只在 FM 项里，不进入 JVP。</span></li>
+      <li><span>\(W_2\) 上界需要 Lipschitz，所以对 DiT 做了最小的归一化改动。</span></li>
+    </ol>
+  </div>
+  <aside class="aside"></aside>
+</section>
